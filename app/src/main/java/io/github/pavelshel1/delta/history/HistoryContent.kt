@@ -158,6 +158,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                     HistoryCard(
                         entry = entry,
                         onDelete = { component.onDelete(entry.id) },
+                        modifier = Modifier.animateItem(),
                     )
                 }
             }

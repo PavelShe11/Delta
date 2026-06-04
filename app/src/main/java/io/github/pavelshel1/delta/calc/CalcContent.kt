@@ -4,7 +4,9 @@ import android.widget.ProgressBar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -117,19 +120,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
     ).count { it.isNotEmpty() }
 
     val result = calcDeltaP(state)
-    val listState = rememberLazyListState()
-    val showStickyBottom by remember {
-        derivedStateOf {
-            if (result == null) return@derivedStateOf false
-            val layoutInfo = listState.layoutInfo
-            val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.key == "result_block" }
-            if (itemInfo != null) {
-                itemInfo.offset + itemInfo.size > layoutInfo.viewportEndOffset
-            } else {
-                (layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0) < RESULT_ITEM_INDEX
-            }
-        }
-    }
+    val listState = rememberLazyListState(7)
 
     Box(modifier = modifier.fillMaxSize().background(AppColors.Background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -178,9 +169,15 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 }
 
                 stickyHeader(key = "result_block") {
-                    if (result != null) {
+                    val lastResult = remember { mutableStateOf<Double?>(null) }
+                    if (result != null) lastResult.value = result
+                    AnimatedVisibility(
+                        visible = result != null,
+                        enter = fadeIn(tween(250)) + slideInVertically(tween(300)) { it },
+                        exit  = fadeOut(tween(200)) + slideOutVertically(tween(250)) { it },
+                    ) {
                         Column {
-                            ResultBlock(result = result)
+                            ResultBlock(result = lastResult.value ?: 0.0)
                             Spacer(Modifier.height(10.dp))
                         }
                     }
@@ -252,8 +249,6 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 }
             }
         }
-
-        LaunchedEffect(Unit) { listState.scrollToItem(6) }
 
         val slot by component.unitSheet.subscribeAsState()
         slot.child?.instance?.let { UnitSheetContent(it) }
@@ -487,12 +482,12 @@ private fun ResultBlock(result: Double) {
 }
 
 @Composable
-private fun FormulaCard(state: CalcState) {
+private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
     val substituted = buildSubstitutedLatex(state)
     val config = LatexConfig(fontSize = 16.sp, theme = LatexTheme.dark())
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(AppColors.SurfaceHighest),

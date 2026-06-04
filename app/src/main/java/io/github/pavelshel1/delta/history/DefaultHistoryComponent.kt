@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlin.collections.buildList
 
 class DefaultHistoryComponent(
     componentContext: ComponentContext,
@@ -11,20 +12,18 @@ class DefaultHistoryComponent(
 ) : HistoryComponent, ComponentContext by componentContext {
 
     private val _entries = MutableStateFlow(
-        listOf(
-            HistoryEntry(
-                id = 1L,
-                latex = """\Delta P = \dfrac{100}{4} \times\!\left[1-\dfrac{1\times293}{1\times298}\right]""",
-                resultLatex = "0.167",
-                timestampMs = System.currentTimeMillis(),
-            ),
-            HistoryEntry(
-                id = 2L,
-                latex = """\Delta P = \dfrac{100}{8} \times\!\left[1-\dfrac{1.2\times295}{1.0\times300}\right]""",
-                resultLatex = "-0.250",
-                timestampMs = System.currentTimeMillis() - 3_600_000,
-            ),
-        )
+        buildList {
+            repeat(10) {
+                add(
+                    HistoryEntry(
+                        id = it.toLong(),
+                        latex = """\Delta P = \dfrac{100}{4} \times\!\left[1-\dfrac{1\times293}{1\times298}\right]""",
+                        resultLatex = "0.167",
+                        timestampMs = System.currentTimeMillis(),
+                    )
+                )
+            }
+        }
     )
 
     override val entries: StateFlow<List<HistoryEntry>> = _entries
