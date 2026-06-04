@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
@@ -61,6 +62,7 @@ private val TEMP_UNIT_LABELS = listOf("К", "°C")
 private const val TEAL  = "#80FAF0"
 private const val LAV   = "#C4BAFF"
 private const val BLANK_CLR = "#8FA3BA"
+private const val RESULT_ITEM_INDEX = 6
 
 private const val FORMULA_ABSTRACT =
     """\textcolor{$LAV}{\Delta P}=\dfrac{100}{\textcolor{$TEAL}{t}}\times\!\left[1-\dfrac{\textcolor{$TEAL}{P_{\text{кон}}}\times\textcolor{$TEAL}{T_{\text{нач}}}}{\textcolor{$TEAL}{P_{\text{нач}}}\times\textcolor{$TEAL}{T_{\text{кон}}}}\right]"""
@@ -110,6 +112,18 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
 
     val result = calcDeltaP(state)
     val listState = rememberLazyListState()
+    val showStickyBottom by remember {
+        derivedStateOf {
+            if (result == null) return@derivedStateOf false
+            val layoutInfo = listState.layoutInfo
+            val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.key == "result_block" }
+            if (itemInfo != null) {
+                itemInfo.offset + itemInfo.size > layoutInfo.viewportEndOffset
+            } else {
+                (layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0) < RESULT_ITEM_INDEX
+            }
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize().background(AppColors.Background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -148,6 +162,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
             ProgressBar(filled = filledCount, total = 5)
 
             LazyColumn(
+                reverseLayout = true,
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
@@ -156,38 +171,32 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
             ) {
                 item { Spacer(modifier = Modifier.height(2.dp)) }
 
-                item {
-                    InputCard(
-                        varMain = "T", varSub = "нач",
-                        description = "температура в начале",
-                        value = state.tStartText,
-                        unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
-                        hasUnitDropdown = true,
-                        onValueChange = component::onTStartChanged,
-                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
-                    )
+                item { FormulaCard(state = state) }
+
+                stickyHeader {
+                    if (result != null) {
+                        Box(
+                            modifier = Modifier
+                                .shadow(
+                                    elevation = 24.dp,
+                                    shape = RoundedCornerShape(20.dp),
+                                    ambientColor = AppColors.Primary.copy(alpha = 0.25f),
+                                    spotColor = AppColors.Primary.copy(alpha = 0.35f),
+                                ),
+                        ) {
+                            ResultBlock(result = result)
+                        }
+                    }
                 }
 
                 item {
                     InputCard(
-                        varMain = "T", varSub = "кон",
-                        description = "температура в конце",
-                        value = state.tEndText,
-                        unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
-                        hasUnitDropdown = true,
-                        onValueChange = component::onTEndChanged,
-                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
-                    )
-                }
-
-                item {
-                    InputCard(
-                        varMain = "P", varSub = "нач",
-                        description = "давление в начале",
-                        value = state.pStartText,
-                        unitLabel = "бар",
+                        varMain = "t", varSub = null,
+                        description = "время испытания",
+                        value = state.timeText,
+                        unitLabel = "ч",
                         hasUnitDropdown = false,
-                        onValueChange = component::onPStartChanged,
+                        onValueChange = component::onTimeChanged,
                         onUnitTapped = {},
                     )
                 }
@@ -206,23 +215,39 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
 
                 item {
                     InputCard(
-                        varMain = "t", varSub = null,
-                        description = "время испытания",
-                        value = state.timeText,
-                        unitLabel = "ч",
+                        varMain = "P", varSub = "нач",
+                        description = "давление в начале",
+                        value = state.pStartText,
+                        unitLabel = "бар",
                         hasUnitDropdown = false,
-                        onValueChange = component::onTimeChanged,
+                        onValueChange = component::onPStartChanged,
                         onUnitTapped = {},
                     )
                 }
 
-                stickyHeader {
-                    if (result != null) {
-                        ResultBlock(result = result)
-                    }
+                item {
+                    InputCard(
+                        varMain = "T", varSub = "кон",
+                        description = "температура в конце",
+                        value = state.tEndText,
+                        unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
+                        hasUnitDropdown = true,
+                        onValueChange = component::onTEndChanged,
+                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
+                    )
                 }
 
-                item { FormulaCard(state = state) }
+                item {
+                    InputCard(
+                        varMain = "T", varSub = "нач",
+                        description = "температура в начале",
+                        value = state.tStartText,
+                        unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
+                        hasUnitDropdown = true,
+                        onValueChange = component::onTStartChanged,
+                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
+                    )
+                }
 
                 item { Spacer(modifier = Modifier.height(8.dp)) }
             }
