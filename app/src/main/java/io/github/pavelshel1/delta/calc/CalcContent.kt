@@ -11,12 +11,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +27,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -33,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -41,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
@@ -164,32 +170,24 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
             LazyColumn(
                 reverseLayout = true,
                 state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 16.dp)
             ) {
-                item { Spacer(modifier = Modifier.height(2.dp)) }
+                item {
+                    FormulaCard(state = state)
+                }
 
-                item { FormulaCard(state = state) }
-
-                stickyHeader {
+                stickyHeader(key = "result_block") {
                     if (result != null) {
-                        Box(
-                            modifier = Modifier
-                                .shadow(
-                                    elevation = 24.dp,
-                                    shape = RoundedCornerShape(20.dp),
-                                    ambientColor = AppColors.Primary.copy(alpha = 0.25f),
-                                    spotColor = AppColors.Primary.copy(alpha = 0.35f),
-                                ),
-                        ) {
+                        Column {
                             ResultBlock(result = result)
+                            Spacer(Modifier.height(10.dp))
                         }
                     }
                 }
 
                 item {
+                    Spacer(Modifier.height(10.dp))
                     InputCard(
                         varMain = "t", varSub = null,
                         description = "время испытания",
@@ -202,6 +200,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 }
 
                 item {
+                    Spacer(Modifier.height(10.dp))
                     InputCard(
                         varMain = "P", varSub = "кон",
                         description = "давление в конце",
@@ -214,6 +213,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 }
 
                 item {
+                    Spacer(Modifier.height(10.dp))
                     InputCard(
                         varMain = "P", varSub = "нач",
                         description = "давление в начале",
@@ -226,6 +226,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 }
 
                 item {
+                    Spacer(Modifier.height(10.dp))
                     InputCard(
                         varMain = "T", varSub = "кон",
                         description = "температура в конце",
@@ -238,6 +239,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 }
 
                 item {
+                    Spacer(Modifier.height(10.dp))
                     InputCard(
                         varMain = "T", varSub = "нач",
                         description = "температура в начале",
@@ -248,10 +250,10 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                         onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
                     )
                 }
-
-                item { Spacer(modifier = Modifier.height(8.dp)) }
             }
         }
+
+        LaunchedEffect(Unit) { listState.scrollToItem(6) }
 
         val slot by component.unitSheet.subscribeAsState()
         slot.child?.instance?.let { UnitSheetContent(it) }
@@ -287,6 +289,7 @@ private fun ProgressBar(filled: Int, total: Int) {
                 color = if (done) AppColors.Primary else AppColors.Outline,
             )
         }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -427,58 +430,59 @@ private fun UnitChip(label: String, hasDropdown: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun ResultBlock(result: Double) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(AppColors.ResultGradientStart, AppColors.ResultGradientEnd),
-                )
-            )
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "ПАДЕНИЕ ДАВЛЕНИЯ",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.2.sp,
-                color = AppColors.Primary.copy(alpha = 0.55f),
-            )
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = "%.3f".format(result),
-                    fontSize = 44.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 44.sp,
-                    color = AppColors.Primary,
-                )
-                Text(
-                    text = "% / ч",
-                    fontSize = 17.sp,
-                    color = AppColors.Primary.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-            }
-        }
-        Text(
-            text = "ΔP",
-            fontSize = 15.sp,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.SemiBold,
-            color = AppColors.Primary,
+    Card(elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), shape = RoundedCornerShape(20.dp)) {
+        Row(
             modifier = Modifier
-                .clip(CircleShape)
-                .background(AppColors.Primary.copy(alpha = 0.12f))
-                .border(1.5.dp, AppColors.Primary.copy(alpha = 0.3f), CircleShape)
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-        )
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(AppColors.ResultGradientStart, AppColors.ResultGradientEnd),
+                    )
+                )
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "ПАДЕНИЕ ДАВЛЕНИЯ",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.2.sp,
+                    color = AppColors.Primary.copy(alpha = 0.55f),
+                )
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "%.3f".format(result),
+                        fontSize = 44.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 44.sp,
+                        color = AppColors.Primary,
+                    )
+                    Text(
+                        text = "% / ч",
+                        fontSize = 17.sp,
+                        color = AppColors.Primary.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                }
+            }
+            Text(
+                text = "ΔP",
+                fontSize = 15.sp,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.Primary,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(AppColors.Primary.copy(alpha = 0.12f))
+                    .border(1.5.dp, AppColors.Primary.copy(alpha = 0.3f), CircleShape)
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+        }
     }
 }
 
