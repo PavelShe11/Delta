@@ -15,4 +15,5 @@ object AppColors {
     val OnSurfaceVar        = Color(0xFF7A8898)
     val OutlineVar          = Color(0xFF1E293B)
     val Outline             = Color(0xFF3A4660)
+    val RVar                = Color(0xFFC4BAFF)
 }

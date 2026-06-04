@@ -1,5 +1,6 @@
 package io.github.pavelshel1.delta.calc
 
+import android.widget.ProgressBar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -47,11 +49,21 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import com.hrm.latex.renderer.Latex
+import com.hrm.latex.renderer.model.LatexConfig
+import com.hrm.latex.renderer.model.LatexTheme
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetContent
 
 private val TEMP_UNIT_LABELS = listOf("К", "°C")
+
+private const val TEAL  = "#80FAF0"
+private const val LAV   = "#C4BAFF"
+private const val BLANK_CLR = "#8FA3BA"
+
+private const val FORMULA_ABSTRACT =
+    """\textcolor{$LAV}{\Delta P}=\dfrac{100}{\textcolor{$TEAL}{t}}\times\!\left[1-\dfrac{\textcolor{$TEAL}{P_{\text{кон}}}\times\textcolor{$TEAL}{T_{\text{нач}}}}{\textcolor{$TEAL}{P_{\text{нач}}}\times\textcolor{$TEAL}{T_{\text{кон}}}}\right]"""
 
 private fun calcDeltaP(state: CalcState): Double? {
     val t  = state.timeText.toDoubleOrNull()   ?: return null
@@ -65,10 +77,31 @@ private fun calcDeltaP(state: CalcState): Double? {
     return 100.0 / t * (1.0 - pK * tNK / (pN * tKK))
 }
 
+private fun buildSubstitutedLatex(state: CalcState): String {
+    fun fVal(s: String) = if (s.isNotEmpty())
+        """\textcolor{$TEAL}{$s}"""
+    else
+        """\textcolor{$BLANK_CLR}{\text{—}}"""
+    fun toKelvin(s: String, isC: Boolean): String {
+        if (s.isEmpty()) return ""
+        val num = s.toDoubleOrNull() ?: return s
+        return if (isC) parseFloat(num + 273.0) else s
+    }
+    val tN = fVal(toKelvin(state.tStartText, state.tStartUnitIdx == 1))
+    val tK = fVal(toKelvin(state.tEndText,   state.tEndUnitIdx   == 1))
+    val pN = fVal(state.pStartText)
+    val pK = fVal(state.pEndText)
+    val t  = fVal(state.timeText)
+    return """\textcolor{$LAV}{\Delta P}=\dfrac{100}{$t}\times\!\left[1-\dfrac{$pK\times $tN}{$pN\times $tK}\right]"""
+}
+
+private fun parseFloat(d: Double): String = d.toBigDecimal().stripTrailingZeros().toPlainString()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
     val state by component.state.subscribeAsState()
+    val focusManager = LocalFocusManager.current
 
     val filledCount = listOf(
         state.tStartText, state.tEndText,
@@ -77,14 +110,6 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
 
     val result = calcDeltaP(state)
     val listState = rememberLazyListState()
-
-    // Прилипание: item результата невидим → показываем закреплённую копию снизу
-    val isResultItemVisible by remember(listState) {
-        derivedStateOf {
-            listState.layoutInfo.visibleItemsInfo.any { it.key == "result" }
-        }
-    }
-    val showPinnedResult = result != null && !isResultItemVisible
 
     Box(modifier = modifier.fillMaxSize().background(AppColors.Background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -106,7 +131,10 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = component::onHistoryRequested) {
+                    IconButton(onClick = {
+                        focusManager.clearFocus()
+                        component.onHistoryRequested()
+                    }) {
                         Icon(
                             imageVector = Icons.Default.History,
                             contentDescription = "История",
@@ -431,11 +459,8 @@ private fun ResultBlock(result: Double) {
 
 @Composable
 private fun FormulaCard(state: CalcState) {
-    val tNStr = state.tStartText.ifEmpty { "—" }
-    val tKStr = state.tEndText.ifEmpty { "—" }
-    val pNStr = state.pStartText.ifEmpty { "—" }
-    val pKStr = state.pEndText.ifEmpty { "—" }
-    val tStr  = state.timeText.ifEmpty { "—" }
+    val substituted = buildSubstitutedLatex(state)
+    val config = LatexConfig(fontSize = 16.sp, theme = LatexTheme.dark())
 
     Column(
         modifier = Modifier
@@ -446,6 +471,7 @@ private fun FormulaCard(state: CalcState) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .border(1.dp, AppColors.OutlineVar, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -462,11 +488,11 @@ private fun FormulaCard(state: CalcState) {
                 fontSize = 14.sp,
                 fontStyle = FontStyle.Italic,
                 fontWeight = FontWeight.SemiBold,
-                color = AppColors.Primary,
+                color = AppColors.RVar,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(AppColors.Primary.copy(alpha = 0.12f))
-                    .border(1.dp, AppColors.Primary.copy(alpha = 0.3f), CircleShape)
+                    .background(AppColors.RVar.copy(alpha = 0.12f))
+                    .border(1.dp, AppColors.RVar.copy(alpha = 0.30f), CircleShape)
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             )
         }
@@ -474,27 +500,20 @@ private fun FormulaCard(state: CalcState) {
         HorizontalDivider(color = AppColors.OutlineVar)
 
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            Text(
-                text = "ΔP = 100/t × [1 − (Pкон × Tнач) / (Pнач × Tкон)]",
-                fontSize = 14.sp,
-                color = AppColors.OnSurface,
-                fontWeight = FontWeight.Normal,
-            )
+            Latex(latex = FORMULA_ABSTRACT, config = config)
 
             HorizontalDivider(
                 color = AppColors.OutlineVar,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(vertical = 14.dp, horizontal = 16.dp),
             )
 
-            Text(
-                text = "ΔP = 100/$tStr × [1 − ($pKStr × $tNStr) / ($pNStr × $tKStr)]",
-                fontSize = 14.sp,
-                color = AppColors.Primary.copy(alpha = 0.85f),
-            )
+            Latex(latex = substituted, config = config)
         }
     }
 }

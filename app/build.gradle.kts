@@ -59,6 +59,9 @@ dependencies {
     implementation(libs.mvikotlin.main)
     implementation(libs.mvikotlin.coroutines)
     implementation(libs.mvikotlin.logging)
+    implementation(libs.latex.base)
+    implementation(libs.latex.parser)
+    implementation(libs.latex.renderer)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

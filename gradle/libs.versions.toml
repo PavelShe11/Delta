@@ -8,6 +8,7 @@ composeBom = "2026.05.01"
 essenty = "2.5.0"
 decompose = "3.5.0"
 mvikotlin = "4.4.0"
+latex = "1.4.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +31,9 @@ mvikotlin = { group = "com.arkivanov.mvikotlin", name = "mvikotlin", version.ref
 mvikotlin-main = { group = "com.arkivanov.mvikotlin", name = "mvikotlin-main", version.ref = "mvikotlin" }
 mvikotlin-coroutines = { group = "com.arkivanov.mvikotlin", name = "mvikotlin-extensions-coroutines", version.ref = "mvikotlin" }
 mvikotlin-logging = { group = "com.arkivanov.mvikotlin", name = "mvikotlin-logging", version.ref = "mvikotlin" }
+latex-base     = { module = "io.github.huarangmeng:latex-base",     version.ref = "latex" }
+latex-parser   = { module = "io.github.huarangmeng:latex-parser",   version.ref = "latex" }
+latex-renderer = { module = "io.github.huarangmeng:latex-renderer", version.ref = "latex" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
