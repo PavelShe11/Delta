@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
                 RootContent(
                     component = root,
                     modifier = Modifier
-//                        .imePadding()
+                        .imePadding()
                         .fillMaxSize(),
                 )
             }

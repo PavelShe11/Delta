@@ -30,6 +30,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -155,47 +156,52 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AppColors.Background),
-    ) {
-        // TopBar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .height(56.dp)
-                .background(AppColors.Background),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = component::onDismiss) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Закрыть",
-                    tint = AppColors.Primary,
-                )
-            }
-            Text(
-                text = "История расчётов",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Normal,
-                color = AppColors.OnSurface,
-                modifier = Modifier.weight(1f),
-            )
-            if (entries.isNotEmpty()) {
-                IconButton(onClick = { showClearDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Default.DeleteSweep,
-                        contentDescription = "Очистить историю",
-                        tint = AppColors.OnSurfaceVar,
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = AppColors.Background,
+        topBar = {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .height(56.dp)
+                        .background(AppColors.Background),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = component::onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Закрыть",
+                            tint = AppColors.Primary,
+                        )
+                    }
+                    Text(
+                        text = "История расчётов",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = AppColors.OnSurface,
+                        modifier = Modifier.weight(1f),
                     )
+                    if (entries.isNotEmpty()) {
+                        IconButton(onClick = { showClearDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteSweep,
+                                contentDescription = "Очистить историю",
+                                tint = AppColors.OnSurfaceVar,
+                            )
+                        }
+                    }
                 }
+                HorizontalDivider(color = AppColors.OutlineVar)
             }
-        }
-
-        HorizontalDivider(color = AppColors.OutlineVar)
-
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
         if (entries.isEmpty()) {
             Column(
                 modifier = Modifier
@@ -248,6 +254,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                     )
                 }
             }
+        }
         }
     }
 }

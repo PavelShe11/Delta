@@ -1,45 +1,49 @@
 package io.github.pavelshel1.delta.calc
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalOverscrollConfiguration
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.SubdirectoryArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -49,16 +53,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.focus.onFocusChanged
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -70,6 +79,8 @@ import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetContent
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 private val TEMP_UNIT_LABELS = listOf("К", "°C")
@@ -104,152 +115,159 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
     ).count { it.isNotEmpty() }
 
     val result = calcDeltaP(state)
-    val listState = rememberLazyListState(7)
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AppColors.Background)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Испытание на герметичность",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = AppColors.OnSurface,
-                        )
-                        Text(
-                            text = "Перепад давления · ΔP",
-                            fontSize = 11.sp,
-                            color = AppColors.OnSurfaceVar,
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        focusManager.clearFocus()
-                        component.onHistoryRequested()
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "История",
-                            tint = AppColors.OnSurface,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppColors.Background),
-            )
-
-            ProgressBar(filled = filledCount, total = 5)
-
-//            CompositionLocalProvider(LocalOverscrollFactory provides null) {
-                LazyColumn(
-                    reverseLayout = true,
-                    state = listState,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(
-                        start = 14.dp,
-                        end = 14.dp,
-                        top = 12.dp,
-                        bottom = 16.dp
-                    )
-                ) {
-                    item {
-                        FormulaCard(state = state, modifier = Modifier.animateItem())
-                    }
-
-                    stickyHeader(key = "result_block") {
-                        val lastResult = remember { mutableStateOf<Double?>(null) }
-                        if (result != null) lastResult.value = result
-                        AnimatedVisibility(
-                            visible = result != null,
-                            enter = fadeIn(tween(250)) + slideInVertically(tween(300)) { it },
-                            exit = fadeOut(tween(200))
-                        ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = AppColors.Background,
+            contentWindowInsets = WindowInsets.systemBars,
+            topBar = {
+                Column {
+                    TopAppBar(
+                        title = {
                             Column {
-                                ResultBlock(result = lastResult.value ?: 0.0)
-                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    text = "Испытание на герметичность",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = AppColors.OnSurface,
+                                )
+                                Text(
+                                    text = "Перепад давления · ΔP",
+                                    fontSize = 11.sp,
+                                    color = AppColors.OnSurfaceVar,
+                                )
                             }
+                        },
+                        actions = {
+                            IconButton(onClick = {
+                                focusManager.clearFocus()
+                                component.onHistoryRequested()
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = "История",
+                                    tint = AppColors.OnSurface,
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = AppColors.Background),
+                    )
+                    ProgressBar(filled = filledCount, total = 5)
+                }
+            },
+        ) { innerPadding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = 12.dp,
+                    bottom = 16.dp
+                )
+            ) {
+                item {
+                    Spacer(Modifier.height(10.dp))
+                    InputCard(
+                        varMain = "T",
+                        varSub = "нач",
+                        description = "температура в начале",
+                        value = state.tStartText,
+                        unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
+                        hasUnitDropdown = true,
+                        onValueChange = component::onTStartChanged,
+                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
+                        kelvinHint = if (state.tStartUnitIdx == 1) toKelvin(
+                            state.tStartText,
+                            true
+                        ).ifEmpty { null } else null,
+                        modifier = Modifier.animateItem()
+                    )
+                }
+
+                item {
+                    Spacer(Modifier.height(10.dp))
+                    InputCard(
+                        varMain = "T",
+                        varSub = "кон",
+                        description = "температура в конце",
+                        value = state.tEndText,
+                        unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
+                        hasUnitDropdown = true,
+                        onValueChange = component::onTEndChanged,
+                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
+                        kelvinHint = if (state.tEndUnitIdx == 1) toKelvin(
+                            state.tEndText,
+                            true
+                        ).ifEmpty { null } else null,
+                        modifier = Modifier.animateItem()
+                    )
+                }
+
+                item {
+                    Spacer(Modifier.height(10.dp))
+                    InputCard(
+                        varMain = "P", varSub = "нач",
+                        description = "давление в начале",
+                        value = state.pStartText,
+                        unitLabel = "бар",
+                        hasUnitDropdown = false,
+                        onValueChange = component::onPStartChanged,
+                        onUnitTapped = {},
+                        modifier = Modifier.animateItem()
+                    )
+                }
+
+                item {
+                    Spacer(Modifier.height(10.dp))
+                    InputCard(
+                        varMain = "P", varSub = "кон",
+                        description = "давление в конце",
+                        value = state.pEndText,
+                        unitLabel = "бар",
+                        hasUnitDropdown = false,
+                        onValueChange = component::onPEndChanged,
+                        onUnitTapped = {},
+                        modifier = Modifier.animateItem()
+                    )
+                }
+
+                item {
+                    Spacer(Modifier.height(10.dp))
+                    InputCard(
+                        varMain = "t",
+                        varSub = null,
+                        description = "время испытания",
+                        value = state.timeText,
+                        unitLabel = "ч",
+                        hasUnitDropdown = false,
+                        onValueChange = component::onTimeChanged,
+                        onUnitTapped = {},
+                        modifier = Modifier.animateItem()
+                    )
+                }
+
+                item(key = "result_block") {
+                    val lastResult = remember { mutableStateOf<Double?>(null) }
+                    if (result != null) lastResult.value = result
+                    AnimatedVisibility(
+                        visible = result != null,
+                        enter = fadeIn(tween(250)) + slideInVertically(tween(300)) { it },
+                        exit = fadeOut(tween(200))
+                    ) {
+                        Column {
+                            Spacer(Modifier.height(10.dp))
+                            ResultBlock(result = lastResult.value ?: 0.0)
                         }
                     }
+                }
 
-                    item {
-                        Spacer(Modifier.height(10.dp))
-                        InputCard(
-                            varMain = "t",
-                            varSub = null,
-                            description = "время испытания",
-                            value = state.timeText,
-                            unitLabel = "ч",
-                            hasUnitDropdown = false,
-                            onValueChange = component::onTimeChanged,
-                            onUnitTapped = {},
-                            modifier = Modifier.animateItem()
-                        )
-                    }
-
-                    item {
-                        Spacer(Modifier.height(10.dp))
-                        InputCard(
-                            varMain = "P", varSub = "кон",
-                            description = "давление в конце",
-                            value = state.pEndText,
-                            unitLabel = "бар",
-                            hasUnitDropdown = false,
-                            onValueChange = component::onPEndChanged,
-                            onUnitTapped = {},
-                            modifier = Modifier.animateItem()
-                        )
-                    }
-
-                    item {
-                        Spacer(Modifier.height(10.dp))
-                        InputCard(
-                            varMain = "P", varSub = "нач",
-                            description = "давление в начале",
-                            value = state.pStartText,
-                            unitLabel = "бар",
-                            hasUnitDropdown = false,
-                            onValueChange = component::onPStartChanged,
-                            onUnitTapped = {},
-                            modifier = Modifier.animateItem()
-                        )
-                    }
-
-                    item {
-                        Spacer(Modifier.height(10.dp))
-                        InputCard(
-                            varMain = "T",
-                            varSub = "кон",
-                            description = "температура в конце",
-                            value = state.tEndText,
-                            unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
-                            hasUnitDropdown = true,
-                            onValueChange = component::onTEndChanged,
-                            onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
-                            modifier = Modifier.animateItem()
-                        )
-                    }
-
-                    item {
-                        Spacer(Modifier.height(10.dp))
-                        InputCard(
-                            varMain = "T",
-                            varSub = "нач",
-                            description = "температура в начале",
-                            value = state.tStartText,
-                            unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
-                            hasUnitDropdown = true,
-                            onValueChange = component::onTStartChanged,
-                            onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
-                            modifier = Modifier.animateItem()
-                        )
-                    }
-//                }
+                item {
+                    Spacer(Modifier.height(10.dp))
+                    FormulaCard(state = state, modifier = Modifier.animateItem())
+                }
             }
         }
 
@@ -316,59 +334,129 @@ private fun InputCard(
     hasUnitDropdown: Boolean,
     onValueChange: (String) -> Unit,
     onUnitTapped: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    kelvinHint: String? = null,
 ) {
-    Column(
+    var isFocused by remember { mutableStateOf(false) }
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) AppColors.Primary else AppColors.OutlineVar,
+        animationSpec = tween(durationMillis = 180),
+        label = "border",
+    )
+    val glowElevation by animateDpAsState(
+        targetValue = if (isFocused) 8.dp else 0.dp,
+        animationSpec = tween(durationMillis = 180),
+        label = "glow",
+    )
+
+    BasicTextField(
+        value = value,
+        onValueChange = { v ->
+            if (v.isEmpty() || v.matches(Regex("\\d*\\.?\\d*"))) onValueChange(v)
+        },
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(AppColors.Surface)
-            .border(2.dp, AppColors.OutlineVar, RoundedCornerShape(18.dp))
-            .padding(horizontal = 14.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            VarChip(main = varMain, sub = varSub)
-            Text(
-                text = description,
-                fontSize = 12.sp,
-                color = AppColors.OnSurfaceVar,
-            )
-        }
-        Row(
-            modifier = Modifier.padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            BasicTextField(
-                value = value,
-                onValueChange = { v ->
-                    if (v.isEmpty() || v.matches(Regex("\\d*\\.?\\d*"))) onValueChange(v)
-                },
-                modifier = Modifier.weight(1f),
-                textStyle = TextStyle(
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = if (value.isNotEmpty()) AppColors.OnSurface else AppColors.Outline,
-                ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                cursorBrush = SolidColor(AppColors.Primary),
-                decorationBox = { innerTextField ->
-                    Box {
+            .onFocusChanged { isFocused = it.isFocused },
+        textStyle = TextStyle(
+            fontSize = 42.sp,
+            lineHeight = 42.sp,
+            fontWeight = if (value.isNotEmpty()) FontWeight.Normal else FontWeight.Light,
+            color = if (value.isNotEmpty()) AppColors.OnSurface else AppColors.Outline,
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+        cursorBrush = SolidColor(AppColors.Primary),
+        decorationBox = { innerTextField ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = glowElevation,
+                        shape = RoundedCornerShape(18.dp),
+                        clip = false,
+                        ambientColor = AppColors.ActiveGlow,
+                        spotColor = AppColors.ActiveGlow,
+                    )
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(AppColors.Surface)
+                    .border(2.dp, borderColor, RoundedCornerShape(18.dp))
+                    .padding(horizontal = 14.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    VarChip(main = varMain, sub = varSub)
+                    Text(
+                        text = description,
+                        fontSize = 12.sp,
+                        color = AppColors.OnSurfaceVar,
+                    )
+                }
+                Row(
+                    modifier = Modifier.padding(bottom = if (kelvinHint != null) 4.dp else 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
                         if (value.isEmpty()) {
-                            Text("—", fontSize = 42.sp, color = AppColors.Outline)
+                            Text(
+                                text = "—",
+                                fontSize = 42.sp,
+                                lineHeight = 42.sp,
+                                fontWeight = FontWeight.Light,
+                                color = AppColors.Outline,
+                            )
                         }
                         innerTextField()
                     }
-                },
-            )
-            UnitChip(label = unitLabel, hasDropdown = hasUnitDropdown, onClick = onUnitTapped)
-        }
-    }
+                    UnitChip(
+                        label = unitLabel,
+                        hasDropdown = hasUnitDropdown,
+                        isFocused = isFocused,
+                        onClick = onUnitTapped,
+                    )
+                }
+                if (kelvinHint != null) {
+                    Row(
+                        modifier = Modifier.padding(bottom = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SubdirectoryArrowRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(11.dp),
+                            tint = AppColors.Primary.copy(alpha = 0.75f),
+                        )
+                        Text(
+                            text = buildAnnotatedString {
+                                pushStyle(
+                                    SpanStyle(
+                                        color = AppColors.Primary.copy(alpha = 0.75f),
+                                        letterSpacing = 0.2.sp
+                                    )
+                                )
+                                append("в формулу подставится: ")
+                                pop()
+                                pushStyle(
+                                    SpanStyle(
+                                        color = AppColors.Primary,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                                append("$kelvinHint К")
+                                pop()
+                            },
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -400,13 +488,58 @@ private fun VarChip(main: String, sub: String?) {
 }
 
 @Composable
-private fun UnitChip(label: String, hasDropdown: Boolean, onClick: () -> Unit) {
+private fun UnitChip(label: String, hasDropdown: Boolean, isFocused: Boolean, onClick: () -> Unit) {
+    var isFlashing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val bgColor by animateColorAsState(
+        targetValue = when {
+            isFlashing -> AppColors.Primary.copy(alpha = 0.22f)
+            isFocused -> AppColors.Primary.copy(alpha = 0.09f)
+            else -> AppColors.SurfaceHighest
+        },
+        animationSpec = tween(150),
+        label = "unitBg",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isFlashing || isFocused) AppColors.Primary.copy(alpha = 0.45f) else AppColors.OutlineVar,
+        animationSpec = tween(150),
+        label = "unitBorder",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isFlashing || isFocused) AppColors.Primary else AppColors.OnSurface,
+        animationSpec = tween(150),
+        label = "unitText",
+    )
+    val chevronColor by animateColorAsState(
+        targetValue = if (isFlashing || isFocused) AppColors.Primary else AppColors.OnSurfaceVar,
+        animationSpec = tween(150),
+        label = "chevronColor",
+    )
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isFlashing) 180f else 0f,
+        animationSpec = tween(200),
+        label = "chevronRot",
+    )
+
     Row(
         modifier = Modifier
             .clip(CircleShape)
-            .background(AppColors.SurfaceHighest)
-            .border(1.dp, AppColors.OutlineVar, CircleShape)
-            .then(if (hasDropdown) Modifier.clickable(onClick = onClick) else Modifier)
+            .background(bgColor)
+            .border(1.dp, borderColor, CircleShape)
+            .then(
+                if (hasDropdown) Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) {
+                    scope.launch {
+                        isFlashing = true
+                        delay(300.milliseconds)
+                        isFlashing = false
+                    }
+                    onClick()
+                } else Modifier
+            )
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -415,13 +548,16 @@ private fun UnitChip(label: String, hasDropdown: Boolean, onClick: () -> Unit) {
             text = label,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = AppColors.OnSurface,
+            color = contentColor,
         )
         if (hasDropdown) {
-            Text(
-                text = "∨",
-                fontSize = 11.sp,
-                color = AppColors.OnSurfaceVar,
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(13.dp)
+                    .rotate(chevronRotation),
+                tint = chevronColor,
             )
         }
     }
