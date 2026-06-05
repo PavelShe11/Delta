@@ -1,6 +1,7 @@
 package io.github.pavelshel1.delta.calc
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,10 +12,10 @@ import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.relocation.BringIntoViewResponder
-import androidx.compose.foundation.relocation.bringIntoViewResponder
-import androidx.compose.ui.geometry.Rect as GeometryRect
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,6 +48,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +70,7 @@ import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetContent
+import kotlin.time.Duration.Companion.milliseconds
 
 private val TEMP_UNIT_LABELS = listOf("К", "°C")
 
@@ -140,7 +146,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
 
             ProgressBar(filled = filledCount, total = 5)
 
-            CompositionLocalProvider(LocalOverscrollFactory provides null) {
+//            CompositionLocalProvider(LocalOverscrollFactory provides null) {
                 LazyColumn(
                     reverseLayout = true,
                     state = listState,
@@ -243,7 +249,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                             modifier = Modifier.animateItem()
                         )
                     }
-                }
+//                }
             }
         }
 

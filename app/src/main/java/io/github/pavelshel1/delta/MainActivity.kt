@@ -8,6 +8,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.Modifier
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsAnimationCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.animation.PathInterpolatorCompat
 import com.arkivanov.decompose.defaultComponentContext
 import io.github.pavelshel1.delta.root.DefaultRootComponent
 import io.github.pavelshel1.delta.root.RootContent
@@ -30,7 +35,7 @@ class MainActivity : ComponentActivity() {
                 RootContent(
                     component = root,
                     modifier = Modifier
-                        .imePadding()
+//                        .imePadding()
                         .fillMaxSize(),
                 )
             }
