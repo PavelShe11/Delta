@@ -14,8 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.LazyListPrefetchScope
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.layout.LazyLayoutPrefetchState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
@@ -27,23 +33,92 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hrm.latex.renderer.measure.rememberLatexMeasurer
+import com.hrm.latex.renderer.model.LatexConfig
+import com.hrm.latex.renderer.model.LatexTheme
 import io.github.pavelshel1.delta.ui.theme.AppColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+// Кэш на время жизни процесса — при повторном открытии истории высоты уже известны
+private val abstractHeightCache = mutableStateOf<Dp?>(null)
+private val resultHeightCache = mutableStateMapOf<Long, Dp>()
+
+// Предзагрузка ahead элементов в сторону скролла — даёт время Latex-у распарситься до появления
+@OptIn(ExperimentalFoundationApi::class)
+private class EagerPrefetchStrategy(private val ahead: Int = 4) :
+    LazyListPrefetchStrategy by LazyListPrefetchStrategy() {
+
+    private val handles = ArrayDeque<LazyLayoutPrefetchState.PrefetchHandle>()
+    private var scrollForward = true
+
+    override fun LazyListPrefetchScope.onScroll(delta: Float, layoutInfo: LazyListLayoutInfo) {
+        if (layoutInfo.visibleItemsInfo.isEmpty()) return
+        val forward = delta < 0
+        if (forward != scrollForward) {
+            handles.forEach { it.cancel() }
+            handles.clear()
+            scrollForward = forward
+        }
+        handles.forEach { it.cancel() }
+        handles.clear()
+        val base = if (forward) layoutInfo.visibleItemsInfo.last().index + 1
+                   else layoutInfo.visibleItemsInfo.first().index - 1
+        repeat(ahead) { i ->
+            val idx = if (forward) base + i else base - i
+            if (idx in 0 until layoutInfo.totalItemsCount) {
+                handles.addLast(schedulePrefetch(idx))
+            }
+        }
+    }
+}
 
 @Composable
 fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
     val entries by component.entries.collectAsState()
     var showClearDialog by remember { mutableStateOf(false) }
+
+    val preConfig = remember { LatexConfig(fontSize = 14.sp, theme = LatexTheme.dark()) }
+    val measurer = rememberLatexMeasurer(preConfig)
+    val density = LocalDensity.current
+
+    // Замер константной абстрактной формулы — только один раз за время жизни процесса
+    LaunchedEffect(measurer) {
+        if (abstractHeightCache.value == null) {
+            val localDensity = density
+            val dims = withContext(Dispatchers.Default) { measurer.measure(FORMULA_ABSTRACT, preConfig) }
+            dims?.let { abstractHeightCache.value = with(localDensity) { it.heightPx.toDp() } }
+        }
+    }
+
+    rememberLazyListState()
+
+    // Замер формул результатов для новых записей
+    LaunchedEffect(entries, measurer) {
+        val localDensity = density
+        entries.filter { it.id !in resultHeightCache }.forEach { entry ->
+            val formula = buildFormulaWithResult(entry)
+            val dims = withContext(Dispatchers.Default) { measurer.measure(formula, preConfig) }
+            dims?.let { resultHeightCache[entry.id] = with(localDensity) { it.heightPx.toDp() } }
+        }
+    }
+
+    val abstractHeightDp by abstractHeightCache
 
     if (showClearDialog) {
         AlertDialog(
@@ -149,16 +224,25 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                 )
             }
         } else {
+            @OptIn(ExperimentalFoundationApi::class)
+            val listState = rememberLazyListState(
+                prefetchStrategy = remember { EagerPrefetchStrategy(ahead = 4) }
+            )
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
+                state = listState,
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 items(entries, key = { it.id }) { entry ->
+                    val id = entry.id
+                    val onDelete = remember(id) { { component.onDelete(id) } }
                     HistoryCard(
                         entry = entry,
-                        onDelete = { component.onDelete(entry.id) },
+                        onDelete = onDelete,
                         modifier = Modifier.animateItem(),
+                        abstractHeightDp = abstractHeightDp,
+                        resultHeightDp = resultHeightCache[entry.id],
                     )
                 }
             }

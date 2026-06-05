@@ -13,7 +13,7 @@ class DefaultHistoryComponent(
 
     private val _entries = MutableStateFlow(
         buildList {
-            repeat(10) {
+            repeat(100) {
                 add(
                     HistoryEntry(
                         id = it.toLong(),
