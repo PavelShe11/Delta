@@ -25,14 +25,13 @@ class MainActivity : ComponentActivity() {
             componentContext = defaultComponentContext(),
         )
 
-
         setContent {
             DeltaTheme {
                 RootContent(
                     component = root,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .imePadding(),
+                        .imePadding()
+                        .fillMaxSize(),
                 )
             }
         }

@@ -5,10 +5,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollConfiguration
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.relocation.BringIntoViewResponder
+import androidx.compose.foundation.relocation.bringIntoViewResponder
+import androidx.compose.ui.geometry.Rect as GeometryRect
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -36,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,9 +100,11 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
     val result = calcDeltaP(state)
     val listState = rememberLazyListState(7)
 
-    Box(modifier = modifier
-        .fillMaxSize()
-        .background(AppColors.Background)) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AppColors.Background)
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             TopAppBar(
@@ -130,107 +140,109 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
 
             ProgressBar(filled = filledCount, total = 5)
 
-            LazyColumn(
-                reverseLayout = true,
-                state = listState,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(
-                    start = 14.dp,
-                    end = 14.dp,
-                    top = 12.dp,
-                    bottom = 16.dp
-                )
-            ) {
-                item {
-                    FormulaCard(state = state, modifier = Modifier.animateItem())
-                }
+            CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                LazyColumn(
+                    reverseLayout = true,
+                    state = listState,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(
+                        start = 14.dp,
+                        end = 14.dp,
+                        top = 12.dp,
+                        bottom = 16.dp
+                    )
+                ) {
+                    item {
+                        FormulaCard(state = state, modifier = Modifier.animateItem())
+                    }
 
-                stickyHeader(key = "result_block") {
-                    val lastResult = remember { mutableStateOf<Double?>(null) }
-                    if (result != null) lastResult.value = result
-                    AnimatedVisibility(
-                        visible = result != null,
-                        enter = fadeIn(tween(250)) + slideInVertically(tween(300)) { it },
-                        exit = fadeOut(tween(200)) /*+ slideOutVertically(tween(250)) { it }*/
-                    ) {
-                        Column {
-                            ResultBlock(result = lastResult.value ?: 0.0)
-                            Spacer(Modifier.height(10.dp))
+                    stickyHeader(key = "result_block") {
+                        val lastResult = remember { mutableStateOf<Double?>(null) }
+                        if (result != null) lastResult.value = result
+                        AnimatedVisibility(
+                            visible = result != null,
+                            enter = fadeIn(tween(250)) + slideInVertically(tween(300)) { it },
+                            exit = fadeOut(tween(200))
+                        ) {
+                            Column {
+                                ResultBlock(result = lastResult.value ?: 0.0)
+                                Spacer(Modifier.height(10.dp))
+                            }
                         }
                     }
-                }
 
-                item {
-                    Spacer(Modifier.height(10.dp))
-                    InputCard(
-                        varMain = "t",
-                        varSub = null,
-                        description = "время испытания",
-                        value = state.timeText,
-                        unitLabel = "ч",
-                        hasUnitDropdown = false,
-                        onValueChange = component::onTimeChanged,
-                        onUnitTapped = {},
-                        modifier = Modifier.animateItem()
-                    )
-                }
+                    item {
+                        Spacer(Modifier.height(10.dp))
+                        InputCard(
+                            varMain = "t",
+                            varSub = null,
+                            description = "время испытания",
+                            value = state.timeText,
+                            unitLabel = "ч",
+                            hasUnitDropdown = false,
+                            onValueChange = component::onTimeChanged,
+                            onUnitTapped = {},
+                            modifier = Modifier.animateItem()
+                        )
+                    }
 
-                item {
-                    Spacer(Modifier.height(10.dp))
-                    InputCard(
-                        varMain = "P", varSub = "кон",
-                        description = "давление в конце",
-                        value = state.pEndText,
-                        unitLabel = "бар",
-                        hasUnitDropdown = false,
-                        onValueChange = component::onPEndChanged,
-                        onUnitTapped = {},
-                        modifier = Modifier.animateItem()
-                    )
-                }
+                    item {
+                        Spacer(Modifier.height(10.dp))
+                        InputCard(
+                            varMain = "P", varSub = "кон",
+                            description = "давление в конце",
+                            value = state.pEndText,
+                            unitLabel = "бар",
+                            hasUnitDropdown = false,
+                            onValueChange = component::onPEndChanged,
+                            onUnitTapped = {},
+                            modifier = Modifier.animateItem()
+                        )
+                    }
 
-                item {
-                    Spacer(Modifier.height(10.dp))
-                    InputCard(
-                        varMain = "P", varSub = "нач",
-                        description = "давление в начале",
-                        value = state.pStartText,
-                        unitLabel = "бар",
-                        hasUnitDropdown = false,
-                        onValueChange = component::onPStartChanged,
-                        onUnitTapped = {},
-                        modifier = Modifier.animateItem()
-                    )
-                }
+                    item {
+                        Spacer(Modifier.height(10.dp))
+                        InputCard(
+                            varMain = "P", varSub = "нач",
+                            description = "давление в начале",
+                            value = state.pStartText,
+                            unitLabel = "бар",
+                            hasUnitDropdown = false,
+                            onValueChange = component::onPStartChanged,
+                            onUnitTapped = {},
+                            modifier = Modifier.animateItem()
+                        )
+                    }
 
-                item {
-                    Spacer(Modifier.height(10.dp))
-                    InputCard(
-                        varMain = "T",
-                        varSub = "кон",
-                        description = "температура в конце",
-                        value = state.tEndText,
-                        unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
-                        hasUnitDropdown = true,
-                        onValueChange = component::onTEndChanged,
-                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
-                        modifier = Modifier.animateItem()
-                    )
-                }
+                    item {
+                        Spacer(Modifier.height(10.dp))
+                        InputCard(
+                            varMain = "T",
+                            varSub = "кон",
+                            description = "температура в конце",
+                            value = state.tEndText,
+                            unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
+                            hasUnitDropdown = true,
+                            onValueChange = component::onTEndChanged,
+                            onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
+                            modifier = Modifier.animateItem()
+                        )
+                    }
 
-                item {
-                    Spacer(Modifier.height(10.dp))
-                    InputCard(
-                        varMain = "T",
-                        varSub = "нач",
-                        description = "температура в начале",
-                        value = state.tStartText,
-                        unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
-                        hasUnitDropdown = true,
-                        onValueChange = component::onTStartChanged,
-                        onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
-                        modifier = Modifier.animateItem()
-                    )
+                    item {
+                        Spacer(Modifier.height(10.dp))
+                        InputCard(
+                            varMain = "T",
+                            varSub = "нач",
+                            description = "температура в начале",
+                            value = state.tStartText,
+                            unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
+                            hasUnitDropdown = true,
+                            onValueChange = component::onTStartChanged,
+                            onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
+                            modifier = Modifier.animateItem()
+                        )
+                    }
                 }
             }
         }
