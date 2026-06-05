@@ -2,6 +2,7 @@ package io.github.pavelshel1.delta.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,10 +11,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
@@ -30,19 +32,21 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +56,10 @@ import androidx.compose.ui.unit.sp
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.latex.renderer.model.LatexTheme
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import io.github.pavelshel1.delta.formula.deltaAbstractLatex
 import io.github.pavelshel1.delta.formula.deltaSubstitutedWithResultLatex
 import io.github.pavelshel1.delta.ui.theme.AppColors
@@ -81,7 +89,7 @@ private class EagerPrefetchStrategy(private val ahead: Int = 4) :
         handles.forEach { it.cancel() }
         handles.clear()
         val base = if (forward) layoutInfo.visibleItemsInfo.last().index + 1
-                   else layoutInfo.visibleItemsInfo.first().index - 1
+        else layoutInfo.visibleItemsInfo.first().index - 1
         repeat(ahead) { i ->
             val idx = if (forward) base + i else base - i
             if (idx in 0 until layoutInfo.totalItemsCount) {
@@ -100,28 +108,41 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
     val measurer = rememberLatexMeasurer(preConfig)
     val density = LocalDensity.current
 
-    // Замер константной абстрактной формулы — только один раз за время жизни процесса
     LaunchedEffect(measurer) {
         if (abstractHeightCache.value == null) {
             val localDensity = density
-            val dims = withContext(Dispatchers.Default) { measurer.measure(deltaAbstractLatex, preConfig) }
+            val dims =
+                withContext(Dispatchers.Default) { measurer.measure(deltaAbstractLatex, preConfig) }
             dims?.let { abstractHeightCache.value = with(localDensity) { it.heightPx.toDp() } }
         }
     }
 
-    rememberLazyListState()
-
-    // Замер формул результатов для новых записей
     LaunchedEffect(entries, measurer) {
         val localDensity = density
         entries.filter { it.id !in resultHeightCache }.forEach { entry ->
-            val formula = deltaSubstitutedWithResultLatex(entry.t, entry.pStart, entry.pEnd, entry.tStartK, entry.tEndK, entry.result)
+            val formula = deltaSubstitutedWithResultLatex(
+                entry.t,
+                entry.pStart,
+                entry.pEnd,
+                entry.tStartK,
+                entry.tEndK,
+                entry.result
+            )
             val dims = withContext(Dispatchers.Default) { measurer.measure(formula, preConfig) }
             dims?.let { resultHeightCache[entry.id] = with(localDensity) { it.heightPx.toDp() } }
         }
     }
 
     val abstractHeightDp by abstractHeightCache
+
+    val statusBarTopPx = WindowInsets.statusBars.getTop(density)
+    var toolbarHeightPx by remember {
+        mutableIntStateOf(statusBarTopPx + with(density) { 57.dp.roundToPx() })
+    }
+    val toolbarHeightDp = with(density) { toolbarHeightPx.toDp() }
+    val navBarBottomDp = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
+
+    val hazeState = rememberHazeState()
 
     if (showClearDialog) {
         AlertDialog(
@@ -156,56 +177,17 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
         )
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = AppColors.Background,
-        topBar = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .height(56.dp)
-                        .background(AppColors.Background),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = component::onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Закрыть",
-                            tint = AppColors.Primary,
-                        )
-                    }
-                    Text(
-                        text = "История расчётов",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = AppColors.OnSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (entries.isNotEmpty()) {
-                        IconButton(onClick = { showClearDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteSweep,
-                                contentDescription = "Очистить историю",
-                                tint = AppColors.OnSurfaceVar,
-                            )
-                        }
-                    }
-                }
-                HorizontalDivider(color = AppColors.OutlineVar)
-            }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AppColors.Background)
+    ) {
+        // ── Контент (источник размытия) ──────────────────────────────────────
         if (entries.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(top = toolbarHeightDp)
                     .padding(horizontal = 44.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -237,9 +219,16 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                 prefetchStrategy = remember { EagerPrefetchStrategy(ahead = 4) }
             )
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = hazeState),
                 state = listState,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = toolbarHeightDp + 10.dp,
+                    bottom = 10.dp + navBarBottomDp,
+                ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 items(entries, key = { it.id }) { entry ->
@@ -255,6 +244,55 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                 }
             }
         }
-        }
+
+        // ── Toolbar (hazeEffect — размывает контент позади) ──────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .hazeEffect(
+                    state = hazeState,
+                    style = HazeDefaults.style(backgroundColor = AppColors.Background),
+                )
+                .onSizeChanged { toolbarHeightPx = it.height }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(Color.Transparent),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = component::onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Закрыть",
+                            tint = AppColors.Primary,
+                        )
+                    }
+                    Text(
+                        text = "История расчётов",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = AppColors.OnSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (entries.isNotEmpty()) {
+                        IconButton(onClick = { showClearDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteSweep,
+                                contentDescription = "Очистить историю",
+                                tint = AppColors.OnSurfaceVar,
+                            )
+                        }
+                    }
+                }
+                HorizontalDivider(color = AppColors.OutlineVar)
+            }
+        } // Box (toolbar haze wrapper)
     }
 }
