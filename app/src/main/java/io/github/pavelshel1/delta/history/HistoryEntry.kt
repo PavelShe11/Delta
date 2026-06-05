@@ -6,7 +6,11 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class HistoryEntry(
     val id: Long,
-    val latex: String,
-    val resultLatex: String,
+    val t: String,
+    val pStart: String,
+    val pEnd: String,
+    val tStartK: String,
+    val tEndK: String,
+    val result: Double,
     val timestampMs: Long,
 ) : Parcelable

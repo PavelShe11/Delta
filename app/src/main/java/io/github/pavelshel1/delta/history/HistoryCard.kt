@@ -3,12 +3,9 @@ package io.github.pavelshel1.delta.history
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.Dp
@@ -32,21 +29,11 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hrm.latex.renderer.Latex
-import com.hrm.latex.renderer.model.LatexConfig
-import com.hrm.latex.renderer.model.LatexTheme
+import io.github.pavelshel1.delta.formula.DeltaPAbstractFormula
+import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import java.text.SimpleDateFormat
 import java.util.Date
-
-internal const val TEAL = "#80FAF0"
-internal const val LAV  = "#C4BAFF"
-
-internal const val FORMULA_ABSTRACT =
-    """\textcolor{$LAV}{\Delta P}=\dfrac{100}{\textcolor{$TEAL}{t}}\times\!\left[1-\dfrac{\textcolor{$TEAL}{P_{\text{кон}}}\times\textcolor{$TEAL}{T_{\text{нач}}}}{\textcolor{$TEAL}{P_{\text{нач}}}\times\textcolor{$TEAL}{T_{\text{кон}}}}\right]"""
-
-internal fun buildFormulaWithResult(entry: HistoryEntry) =
-    "${entry.latex}\\;=\\;\\textcolor{$TEAL}{${entry.resultLatex}}\\;\\text{\\%/ч}"
 
 @Composable
 fun HistoryCard(
@@ -56,16 +43,12 @@ fun HistoryCard(
     abstractHeightDp: Dp? = null,
     resultHeightDp: Dp? = null,
 ) {
-    val config = remember { LatexConfig(fontSize = 14.sp, theme = LatexTheme.dark()) }
     val configuration = LocalConfiguration.current
     val locale = remember(configuration) {
         ConfigurationCompat.getLocales(configuration).get(0) ?: java.util.Locale.ROOT
     }
     val ts = remember(entry.timestampMs, locale) {
         SimpleDateFormat("dd.MM.yyyy HH:mm", locale).format(Date(entry.timestampMs))
-    }
-    val formulaWithResult = remember(entry.latex, entry.resultLatex) {
-        "${entry.latex}\\;=\\;\\textcolor{$TEAL}{${entry.resultLatex}}\\;\\text{\\%/ч}"
     }
 
     Column(
@@ -130,41 +113,29 @@ fun HistoryCard(
 
         HorizontalDivider(color = AppColors.OutlineVar)
 
-        // Body
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (abstractHeightDp != null) Modifier.height(abstractHeightDp)
-                        else Modifier.heightIn(min = 52.dp)
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Latex(latex = FORMULA_ABSTRACT, config = config)
-            }
+            DeltaPAbstractFormula(fontSize = 14.sp, fixedHeight = abstractHeightDp)
 
             HorizontalDivider(
                 color = AppColors.OutlineVar,
                 modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (resultHeightDp != null) Modifier.height(resultHeightDp)
-                        else Modifier.heightIn(min = 40.dp)
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Latex(latex = formulaWithResult, config = config)
-            }
+            DeltaPFormulaWithValues(
+                t = entry.t,
+                pStart = entry.pStart,
+                pEnd = entry.pEnd,
+                tStartK = entry.tStartK,
+                tEndK = entry.tEndK,
+                result = entry.result,
+                fontSize = 14.sp,
+                fixedHeight = resultHeightDp,
+            )
         }
     }
 }

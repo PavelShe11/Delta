@@ -1,12 +1,10 @@
 package io.github.pavelshel1.delta.calc
 
-import android.widget.ProgressBar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -39,17 +36,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
@@ -59,54 +52,31 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import com.hrm.latex.renderer.Latex
-import com.hrm.latex.renderer.model.LatexConfig
-import com.hrm.latex.renderer.model.LatexTheme
+import io.github.pavelshel1.delta.formula.DeltaPAbstractFormula
+import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetContent
 
 private val TEMP_UNIT_LABELS = listOf("К", "°C")
 
-private const val TEAL  = "#80FAF0"
-private const val LAV   = "#C4BAFF"
-private const val BLANK_CLR = "#8FA3BA"
-private const val RESULT_ITEM_INDEX = 6
-
-private const val FORMULA_ABSTRACT =
-    """\textcolor{$LAV}{\Delta P}=\dfrac{100}{\textcolor{$TEAL}{t}}\times\!\left[1-\dfrac{\textcolor{$TEAL}{P_{\text{кон}}}\times\textcolor{$TEAL}{T_{\text{нач}}}}{\textcolor{$TEAL}{P_{\text{нач}}}\times\textcolor{$TEAL}{T_{\text{кон}}}}\right]"""
-
 private fun calcDeltaP(state: CalcState): Double? {
-    val t  = state.timeText.toDoubleOrNull()   ?: return null
+    val t = state.timeText.toDoubleOrNull() ?: return null
     val pN = state.pStartText.toDoubleOrNull() ?: return null
-    val pK = state.pEndText.toDoubleOrNull()   ?: return null
+    val pK = state.pEndText.toDoubleOrNull() ?: return null
     val tN = state.tStartText.toDoubleOrNull() ?: return null
-    val tK = state.tEndText.toDoubleOrNull()   ?: return null
+    val tK = state.tEndText.toDoubleOrNull() ?: return null
     if (t == 0.0 || pN == 0.0 || tK == 0.0) return null
     val tNK = if (state.tStartUnitIdx == 1) tN + 273.0 else tN
-    val tKK = if (state.tEndUnitIdx == 1)   tK + 273.0 else tK
+    val tKK = if (state.tEndUnitIdx == 1) tK + 273.0 else tK
     return 100.0 / t * (1.0 - pK * tNK / (pN * tKK))
 }
 
-private fun buildSubstitutedLatex(state: CalcState): String {
-    fun fVal(s: String) = if (s.isNotEmpty())
-        """\textcolor{$TEAL}{$s}"""
-    else
-        """\textcolor{$BLANK_CLR}{\text{—}}"""
-    fun toKelvin(s: String, isC: Boolean): String {
-        if (s.isEmpty()) return ""
-        val num = s.toDoubleOrNull() ?: return s
-        return if (isC) parseFloat(num + 273.0) else s
-    }
-    val tN = fVal(toKelvin(state.tStartText, state.tStartUnitIdx == 1))
-    val tK = fVal(toKelvin(state.tEndText,   state.tEndUnitIdx   == 1))
-    val pN = fVal(state.pStartText)
-    val pK = fVal(state.pEndText)
-    val t  = fVal(state.timeText)
-    return """\textcolor{$LAV}{\Delta P}=\dfrac{100}{$t}\times\!\left[1-\dfrac{$pK\times $tN}{$pN\times $tK}\right]"""
+private fun toKelvin(s: String, isCelsius: Boolean): String {
+    if (s.isEmpty()) return ""
+    val num = s.toDoubleOrNull() ?: return s
+    return if (isCelsius) (num + 273.0).toBigDecimal().stripTrailingZeros().toPlainString() else s
 }
-
-private fun parseFloat(d: Double): String = d.toBigDecimal().stripTrailingZeros().toPlainString()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,7 +92,9 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
     val result = calcDeltaP(state)
     val listState = rememberLazyListState(7)
 
-    Box(modifier = modifier.fillMaxSize().background(AppColors.Background)) {
+    Box(modifier = modifier
+        .fillMaxSize()
+        .background(AppColors.Background)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             TopAppBar(
@@ -162,10 +134,15 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 reverseLayout = true,
                 state = listState,
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 16.dp)
+                contentPadding = PaddingValues(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = 12.dp,
+                    bottom = 16.dp
+                )
             ) {
                 item {
-                    FormulaCard(state = state)
+                    FormulaCard(state = state, modifier = Modifier.animateItem())
                 }
 
                 stickyHeader(key = "result_block") {
@@ -174,7 +151,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                     AnimatedVisibility(
                         visible = result != null,
                         enter = fadeIn(tween(250)) + slideInVertically(tween(300)) { it },
-                        exit  = fadeOut(tween(200)) + slideOutVertically(tween(250)) { it },
+                        exit = fadeOut(tween(200)) /*+ slideOutVertically(tween(250)) { it }*/
                     ) {
                         Column {
                             ResultBlock(result = lastResult.value ?: 0.0)
@@ -186,13 +163,15 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                 item {
                     Spacer(Modifier.height(10.dp))
                     InputCard(
-                        varMain = "t", varSub = null,
+                        varMain = "t",
+                        varSub = null,
                         description = "время испытания",
                         value = state.timeText,
                         unitLabel = "ч",
                         hasUnitDropdown = false,
                         onValueChange = component::onTimeChanged,
                         onUnitTapped = {},
+                        modifier = Modifier.animateItem()
                     )
                 }
 
@@ -206,6 +185,7 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                         hasUnitDropdown = false,
                         onValueChange = component::onPEndChanged,
                         onUnitTapped = {},
+                        modifier = Modifier.animateItem()
                     )
                 }
 
@@ -219,32 +199,37 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                         hasUnitDropdown = false,
                         onValueChange = component::onPStartChanged,
                         onUnitTapped = {},
+                        modifier = Modifier.animateItem()
                     )
                 }
 
                 item {
                     Spacer(Modifier.height(10.dp))
                     InputCard(
-                        varMain = "T", varSub = "кон",
+                        varMain = "T",
+                        varSub = "кон",
                         description = "температура в конце",
                         value = state.tEndText,
                         unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
                         hasUnitDropdown = true,
                         onValueChange = component::onTEndChanged,
                         onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
+                        modifier = Modifier.animateItem()
                     )
                 }
 
                 item {
                     Spacer(Modifier.height(10.dp))
                     InputCard(
-                        varMain = "T", varSub = "нач",
+                        varMain = "T",
+                        varSub = "нач",
                         description = "температура в начале",
                         value = state.tStartText,
                         unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
                         hasUnitDropdown = true,
                         onValueChange = component::onTStartChanged,
                         onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
+                        modifier = Modifier.animateItem()
                     )
                 }
             }
@@ -313,9 +298,10 @@ private fun InputCard(
     hasUnitDropdown: Boolean,
     onValueChange: (String) -> Unit,
     onUnitTapped: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(AppColors.Surface)
@@ -425,7 +411,10 @@ private fun UnitChip(label: String, hasDropdown: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun ResultBlock(result: Double) {
-    Card(elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), shape = RoundedCornerShape(20.dp)) {
+    Card(
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -483,9 +472,6 @@ private fun ResultBlock(result: Double) {
 
 @Composable
 private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
-    val substituted = buildSubstitutedLatex(state)
-    val config = LatexConfig(fontSize = 16.sp, theme = LatexTheme.dark())
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -495,7 +481,11 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, AppColors.OutlineVar, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                .border(
+                    1.dp,
+                    AppColors.OutlineVar,
+                    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                )
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -530,14 +520,20 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            Latex(latex = FORMULA_ABSTRACT, config = config)
+            DeltaPAbstractFormula()
 
             HorizontalDivider(
                 color = AppColors.OutlineVar,
                 modifier = Modifier.padding(vertical = 14.dp, horizontal = 16.dp),
             )
 
-            Latex(latex = substituted, config = config)
+            DeltaPFormulaWithValues(
+                t = state.timeText,
+                pStart = state.pStartText,
+                pEnd = state.pEndText,
+                tStartK = toKelvin(state.tStartText, state.tStartUnitIdx == 1),
+                tEndK = toKelvin(state.tEndText, state.tEndUnitIdx == 1),
+            )
         }
     }
 }

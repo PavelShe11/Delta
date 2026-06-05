@@ -51,6 +51,8 @@ import androidx.compose.ui.unit.sp
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.latex.renderer.model.LatexTheme
+import io.github.pavelshel1.delta.formula.deltaAbstractLatex
+import io.github.pavelshel1.delta.formula.deltaSubstitutedWithResultLatex
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -101,7 +103,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
     LaunchedEffect(measurer) {
         if (abstractHeightCache.value == null) {
             val localDensity = density
-            val dims = withContext(Dispatchers.Default) { measurer.measure(FORMULA_ABSTRACT, preConfig) }
+            val dims = withContext(Dispatchers.Default) { measurer.measure(deltaAbstractLatex, preConfig) }
             dims?.let { abstractHeightCache.value = with(localDensity) { it.heightPx.toDp() } }
         }
     }
@@ -112,7 +114,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
     LaunchedEffect(entries, measurer) {
         val localDensity = density
         entries.filter { it.id !in resultHeightCache }.forEach { entry ->
-            val formula = buildFormulaWithResult(entry)
+            val formula = deltaSubstitutedWithResultLatex(entry.t, entry.pStart, entry.pEnd, entry.tStartK, entry.tEndK, entry.result)
             val dims = withContext(Dispatchers.Default) { measurer.measure(formula, preConfig) }
             dims?.let { resultHeightCache[entry.id] = with(localDensity) { it.heightPx.toDp() } }
         }

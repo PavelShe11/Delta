@@ -17,8 +17,12 @@ class DefaultHistoryComponent(
                 add(
                     HistoryEntry(
                         id = it.toLong(),
-                        latex = """\Delta P = \dfrac{100}{4} \times\!\left[1-\dfrac{1\times293}{1\times298}\right]""",
-                        resultLatex = "0.167",
+                        t = "4",
+                        pStart = "1",
+                        pEnd = "1",
+                        tStartK = "293",
+                        tEndK = "298",
+                        result = 0.167,
                         timestampMs = System.currentTimeMillis(),
                     )
                 )
