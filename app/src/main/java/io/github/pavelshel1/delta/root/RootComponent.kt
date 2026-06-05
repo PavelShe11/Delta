@@ -12,4 +12,7 @@ interface RootComponent {
 
     /** Модальный экран истории. `child` == null значит модалка закрыта. */
     val historySlot: Value<ChildSlot<*, HistoryComponent>>
+
+    /** Количество сохранённых записей истории. */
+    val historyCount: Value<Int>
 }

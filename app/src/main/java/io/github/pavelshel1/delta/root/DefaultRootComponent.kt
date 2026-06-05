@@ -8,6 +8,7 @@ import com.arkivanov.decompose.router.slot.SlotNavigation
 import com.arkivanov.decompose.router.slot.activate
 import com.arkivanov.decompose.router.slot.childSlot
 import com.arkivanov.decompose.router.slot.dismiss
+import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import io.github.pavelshel1.delta.calc.CalcComponent
 import io.github.pavelshel1.delta.calc.DefaultCalcComponent
@@ -38,6 +39,9 @@ class DefaultRootComponent(
             )
         },
     )
+
+    private val _historyCount = MutableValue(100)
+    override val historyCount: Value<Int> = _historyCount
 
     private fun openHistory() = slotNavigation.activate(SlotConfig.History)
     private fun closeHistory() = slotNavigation.dismiss()

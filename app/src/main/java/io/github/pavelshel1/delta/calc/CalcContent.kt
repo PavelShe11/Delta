@@ -111,7 +111,7 @@ private fun toKelvin(s: String, isCelsius: Boolean): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
+fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modifier = Modifier) {
     val state by component.state.subscribeAsState()
     val focusManager = LocalFocusManager.current
 
@@ -167,20 +167,24 @@ fun CalcContent(component: CalcComponent, modifier: Modifier = Modifier) {
                             }
                         },
                         actions = {
-                            IconButton(onClick = {
-                                focusManager.clearFocus()
-                                component.onHistoryRequested()
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.History,
-                                    contentDescription = "История",
-                                    tint = AppColors.OnSurface,
-                                )
+                            if (historyCount > 0) {
+                                IconButton(onClick = {
+                                    focusManager.clearFocus()
+                                    component.onHistoryRequested()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = "История",
+                                        tint = AppColors.OnSurface,
+                                    )
+                                }
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = AppColors.Background),
                     )
+                    HorizontalDivider(color = AppColors.OutlineVar)
                     ProgressBar(filled = filledCount, total = 5)
+                    HorizontalDivider(color = AppColors.OutlineVar)
                 }
             },
         ) { innerPadding ->

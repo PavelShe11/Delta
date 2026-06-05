@@ -26,7 +26,8 @@ fun RootContent(component: RootComponent, modifier: Modifier = Modifier) {
         .fillMaxSize()
         .clickable(indication = null, interactionSource = null) { focusManager.clearFocus() }) {
 
-        CalcContent(component.calc, modifier = Modifier.fillMaxSize())
+        val historyCount by component.historyCount.subscribeAsState()
+        CalcContent(component.calc, historyCount = historyCount, modifier = Modifier.fillMaxSize())
 
         val slot by component.historySlot.subscribeAsState()
         val active = slot.child?.instance
