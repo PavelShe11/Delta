@@ -1,15 +1,14 @@
 package io.github.pavelshel1.delta.calc
 
-import android.R
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,17 +21,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -54,16 +51,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -77,12 +73,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -95,11 +93,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeEffectScope
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.LocalHazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -110,27 +105,10 @@ import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetContent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import kotlin.time.Duration.Companion.milliseconds
 
-private val TEMP_UNIT_LABELS = listOf("К", "°C")
-
-private fun calcDeltaP(state: CalcState): Double? {
-    val t = state.timeText.toDoubleOrNull() ?: return null
-    val pN = state.pStartText.toDoubleOrNull() ?: return null
-    val pK = state.pEndText.toDoubleOrNull() ?: return null
-    val tN = state.tStartText.toDoubleOrNull() ?: return null
-    val tK = state.tEndText.toDoubleOrNull() ?: return null
-    if (t == 0.0 || pN == 0.0 || tK == 0.0) return null
-    val tNK = if (state.tStartUnitIdx == 1) tN + 273.0 else tN
-    val tKK = if (state.tEndUnitIdx == 1) tK + 273.0 else tK
-    return 100.0 / t * (1.0 - pK * tNK / (pN * tKK))
-}
-
-private fun toKelvin(s: String, isCelsius: Boolean): String {
-    if (s.isEmpty()) return ""
-    val num = s.toDoubleOrNull() ?: return s
-    return if (isCelsius) (num + 273.0).toBigDecimal().stripTrailingZeros().toPlainString() else s
-}
+private val TEMP_UNIT_LABELS = listOf("°C", "К")
 
 private val LocalHazeState = compositionLocalOf { HazeState() }
 
@@ -141,13 +119,10 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     val focusManager = LocalFocusManager.current
     var pendingHistoryOpen by remember { mutableStateOf(false) }
 
-    val filledCount = listOf(
-        state.tStartText, state.tEndText,
-        state.pStartText, state.pEndText, state.timeText,
-    ).count { it.isNotEmpty() }
+    val filledCount = state.filledCount
 
-    val result = calcDeltaP(state)
-    val lastResult = remember { mutableStateOf<Double?>(null) }
+    val result = state.result
+    val lastResult = remember { mutableStateOf<BigDecimal?>(null) }
     if (result != null) lastResult.value = result
 
     var justSaved by remember { mutableStateOf(false) }
@@ -273,7 +248,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varMain = "T",
                                 varSub = "нач",
                                 description = "температура в начале",
-                                value = state.tStartText,
+                                value = state.tStartText.toDisplayString(),
                                 unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTStartChanged,
@@ -282,10 +257,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                     if (imeVisible) pendingUnitKey = FieldKey.TStart
                                     else component.onUnitChipTapped(FieldKey.TStart)
                                 },
-                                kelvinHint = if (state.tStartUnitIdx == 1) toKelvin(
-                                    state.tStartText,
-                                    true
-                                ).ifEmpty { null } else null,
+                                kelvinHint = if (state.tStartUnitIdx == 0) state.tStartKelvin.toDisplayString().ifEmpty { null } else null,
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusTEnd.requestFocus() },
                                 modifier = Modifier.animateItem().focusRequester(focusTStart),
@@ -298,7 +270,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varMain = "T",
                                 varSub = "кон",
                                 description = "температура в конце",
-                                value = state.tEndText,
+                                value = state.tEndText.toDisplayString(),
                                 unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTEndChanged,
@@ -307,10 +279,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                     if (imeVisible) pendingUnitKey = FieldKey.TEnd
                                     else component.onUnitChipTapped(FieldKey.TEnd)
                                 },
-                                kelvinHint = if (state.tEndUnitIdx == 1) toKelvin(
-                                    state.tEndText,
-                                    true
-                                ).ifEmpty { null } else null,
+                                kelvinHint = if (state.tEndUnitIdx == 0) state.tEndKelvin.toDisplayString().ifEmpty { null } else null,
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusPStart.requestFocus() },
                                 modifier = Modifier.animateItem().focusRequester(focusTEnd),
@@ -322,7 +291,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                             InputCard(
                                 varMain = "P", varSub = "нач",
                                 description = "давление в начале",
-                                value = state.pStartText,
+                                value = state.pStart.toDisplayString(),
                                 unitLabel = "бар",
                                 hasUnitDropdown = false,
                                 onValueChange = component::onPStartChanged,
@@ -338,7 +307,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                             InputCard(
                                 varMain = "P", varSub = "кон",
                                 description = "давление в конце",
-                                value = state.pEndText,
+                                value = state.pEnd.toDisplayString(),
                                 unitLabel = "бар",
                                 hasUnitDropdown = false,
                                 onValueChange = component::onPEndChanged,
@@ -355,7 +324,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varMain = "t",
                                 varSub = null,
                                 description = "время испытания",
-                                value = state.timeText,
+                                value = state.time.toDisplayString(),
                                 unitLabel = "ч",
                                 hasUnitDropdown = false,
                                 onValueChange = component::onTimeChanged,
@@ -375,10 +344,10 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 Column(modifier = Modifier.alpha(if (showFloating) 0f else 1f)) {
                                     Spacer(Modifier.height(10.dp))
                                     ResultBlock(
-                                        result = lastResult.value ?: 0.0,
+                                        result = lastResult.value?.toDouble() ?: 0.0,
                                         justSaved = justSaved,
                                         onSave = {
-                                            component.onSaveRequested(lastResult.value ?: 0.0)
+                                            component.onSaveRequested(lastResult.value?.toDouble() ?: 0.0)
                                             justSaved = true
                                         },
                                     )
@@ -408,11 +377,11 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                             },
                     ) {
                         ResultBlock(
-                            result = lastResult.value ?: 0.0,
+                            result = lastResult.value?.toDouble() ?: 0.0,
                             hazeState = hazeState,
                             justSaved = justSaved,
                             onSave = {
-                                component.onSaveRequested(lastResult.value ?: 0.0)
+                                component.onSaveRequested(lastResult.value?.toDouble() ?: 0.0)
                                 justSaved = true
                             },
                         )
@@ -508,7 +477,7 @@ private fun InputCard(
     BasicTextField(
         value = value,
         onValueChange = { v ->
-            if (v.isEmpty() || v.matches(Regex("\\d*\\.?\\d*"))) onValueChange(v)
+            if (v.isEmpty() || v.matches(Regex("-?\\d*\\.?\\d*"))) onValueChange(v)
         },
         modifier = modifier
             .fillMaxWidth()
@@ -912,11 +881,11 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
             )
 
             DeltaPFormulaWithValues(
-                t = state.timeText,
-                pStart = state.pStartText,
-                pEnd = state.pEndText,
-                tStartK = toKelvin(state.tStartText, state.tStartUnitIdx == 1),
-                tEndK = toKelvin(state.tEndText, state.tEndUnitIdx == 1),
+                t = state.time.toDisplayString(),
+                pStart = state.pStart.toDisplayString(),
+                pEnd = state.pEnd.toDisplayString(),
+                tStartK = state.tStartKelvin.toDisplayString(),
+                tEndK = state.tEndKelvin.toDisplayString(),
             )
         }
     }

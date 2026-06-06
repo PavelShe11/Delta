@@ -30,7 +30,7 @@ import io.github.pavelshel1.delta.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
 private fun FieldKey.unitLabels(): List<String> = when (this) {
-    FieldKey.TStart, FieldKey.TEnd -> listOf("К", "°C")
+    FieldKey.TStart, FieldKey.TEnd -> listOf("°C", "К")
     FieldKey.PStart, FieldKey.PEnd -> listOf("МПа", "кПа", "бар", "атм")
     FieldKey.Time                  -> listOf("ч", "мин", "с")
 }
