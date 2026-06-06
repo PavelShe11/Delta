@@ -353,6 +353,10 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
 @Composable
 private fun ProgressBar(filled: Int, total: Int) {
     val fraction = filled.toFloat() / total
+    val animatedFraction by animateFloatAsState(
+        targetValue = fraction,
+        animationSpec = tween(durationMillis = 400),
+    )
     val done = filled == total
 
     Column(
@@ -388,7 +392,7 @@ private fun ProgressBar(filled: Int, total: Int) {
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(fraction)
+                    .fillMaxWidth(animatedFraction)
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(AppColors.Primary),

@@ -1,12 +1,15 @@
 package io.github.pavelshel1.delta.formula
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -36,7 +39,7 @@ internal fun deltaSubstitutedWithResultLatex(
     fun fVal(s: String) = if (s.isNotEmpty()) """\textcolor{$TEAL}{$s}""" else """\textcolor{$BLANK_CLR}{\text{—}}"""
     val base = """\textcolor{$LAV}{\Delta P}=\dfrac{100}{${fVal(t)}}\times\!\left[1-\dfrac{${fVal(pEnd)}\times ${fVal(tStartK)}}{${fVal(pStart)}\times ${fVal(tEndK)}}\right]"""
     val resultStr = result.toBigDecimal().stripTrailingZeros().toPlainString()
-    return "$base\\;=\\;\\textcolor{$TEAL}{$resultStr}\\;\\text{\\%/ч}"
+    return """$base\;=\;\textcolor{$TEAL}{$resultStr}"""
 }
 
 @Composable
@@ -81,7 +84,7 @@ fun DeltaPFormulaWithValues(
     val base = """\textcolor{$LAV}{\Delta P}=\dfrac{100}{${fVal(t)}}\times\!\left[1-\dfrac{${fVal(pEnd)}\times ${fVal(tStartK)}}{${fVal(pStart)}\times ${fVal(tEndK)}}\right]"""
     val latex = if (result != null) {
         val resultStr = result.toBigDecimal().stripTrailingZeros().toPlainString()
-        "$base\\;=\\;\\textcolor{$TEAL}{$resultStr}\\;\\text{\\%/ч}"
+        """$base\;=\;\textcolor{$TEAL}{$resultStr}"""
     } else {
         base
     }
@@ -95,9 +98,23 @@ fun DeltaPFormulaWithValues(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Latex(
-            latex = latex,
-            config = LatexConfig(fontSize = fontSize, theme = LatexTheme.dark()),
-        )
+        if (result != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Latex(
+                    latex = latex,
+                    config = LatexConfig(fontSize = fontSize, theme = LatexTheme.dark()),
+                )
+                Text(
+                    text = " %/ч",
+                    fontSize = fontSize,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Latex(
+                latex = latex,
+                config = LatexConfig(fontSize = fontSize, theme = LatexTheme.dark()),
+            )
+        }
     }
 }
