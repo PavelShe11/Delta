@@ -15,6 +15,7 @@ import io.github.pavelshel1.delta.unitsheet.UnitSheetComponent
 class DefaultCalcComponent(
     componentContext: ComponentContext,
     private val onHistory: () -> Unit,
+    private val onSave: (Double) -> Unit = {},
 ) : CalcComponent, ComponentContext by componentContext {
 
     private val _state = MutableValue(CalcState())
@@ -50,6 +51,7 @@ class DefaultCalcComponent(
     )
 
     override fun onHistoryRequested() = onHistory()
+    override fun onSaveRequested(result: Double) = onSave(result)
     override fun onUnitChipTapped(fieldKey: FieldKey) = sheetNavigation.activate(fieldKey)
     override fun onTStartChanged(text: String) { _state.value = _state.value.copy(tStartText = text) }
     override fun onTEndChanged(text: String)   { _state.value = _state.value.copy(tEndText = text) }

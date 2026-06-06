@@ -9,6 +9,7 @@ interface CalcComponent {
     val state: Value<CalcState>
     val unitSheet: Value<ChildSlot<*, UnitSheetComponent>>
     fun onHistoryRequested()
+    fun onSaveRequested(result: Double)
     fun onUnitChipTapped(fieldKey: FieldKey)
     fun onTStartChanged(text: String)
     fun onTEndChanged(text: String)

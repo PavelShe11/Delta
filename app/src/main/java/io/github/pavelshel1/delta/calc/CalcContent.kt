@@ -78,7 +78,10 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
@@ -146,6 +149,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     val result = calcDeltaP(state)
     val lastResult = remember { mutableStateOf<Double?>(null) }
     if (result != null) lastResult.value = result
+
+    var justSaved by remember { mutableStateOf(false) }
+    LaunchedEffect(state) { justSaved = false }
 
     val listState = rememberLazyListState()
     val density = LocalDensity.current
@@ -368,7 +374,14 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                             ) {
                                 Column(modifier = Modifier.alpha(if (showFloating) 0f else 1f)) {
                                     Spacer(Modifier.height(10.dp))
-                                    ResultBlock(result = lastResult.value ?: 0.0)
+                                    ResultBlock(
+                                        result = lastResult.value ?: 0.0,
+                                        justSaved = justSaved,
+                                        onSave = {
+                                            component.onSaveRequested(lastResult.value ?: 0.0)
+                                            justSaved = true
+                                        },
+                                    )
                                 }
                             }
                         }
@@ -394,7 +407,15 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 translationY = (1f - appearProgress) * size.height
                             },
                     ) {
-                        ResultBlock(result = lastResult.value ?: 0.0, hazeState = hazeState)
+                        ResultBlock(
+                            result = lastResult.value ?: 0.0,
+                            hazeState = hazeState,
+                            justSaved = justSaved,
+                            onSave = {
+                                component.onSaveRequested(lastResult.value ?: 0.0)
+                                justSaved = true
+                            },
+                        )
                     }
                 }
             }
@@ -699,7 +720,12 @@ private fun UnitChip(label: String, hasDropdown: Boolean, isFocused: Boolean, on
 }
 
 @Composable
-private fun ResultBlock(result: Double, hazeState: HazeState? = null) {
+private fun ResultBlock(
+    result: Double,
+    onSave: () -> Unit,
+    justSaved: Boolean,
+    hazeState: HazeState? = null,
+) {
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(20.dp),
@@ -760,18 +786,52 @@ private fun ResultBlock(result: Double, hazeState: HazeState? = null) {
                     )
                 }
             }
-            Text(
-                text = "ΔP",
-                fontSize = 15.sp,
-                fontStyle = FontStyle.Italic,
-                fontWeight = FontWeight.SemiBold,
-                color = AppColors.Primary,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(AppColors.Primary.copy(alpha = 0.12f))
-                    .border(1.5.dp, AppColors.Primary.copy(alpha = 0.3f), CircleShape)
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-            )
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = "ΔP",
+                    fontSize = 15.sp,
+                    fontStyle = FontStyle.Italic,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.Primary,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(AppColors.Primary.copy(alpha = 0.12f))
+                        .border(1.5.dp, AppColors.Primary.copy(alpha = 0.3f), CircleShape)
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                )
+                IconButton(
+                    onClick = onSave,
+                    modifier = Modifier.size(28.dp),
+                ) {
+                    Canvas(modifier = Modifier.size(20.dp)) {
+                        val s = size.width / 24f
+                        if (justSaved) {
+                            val sw = 2.5f * s
+                            drawLine(AppColors.Primary, Offset(5f * s, 13f * s), Offset(9f * s, 17f * s), sw, StrokeCap.Round)
+                            drawLine(AppColors.Primary, Offset(9f * s, 17f * s), Offset(19f * s, 7f * s), sw, StrokeCap.Round)
+                        } else {
+                            val path = Path().apply {
+                                moveTo(19f * s, 21f * s)
+                                lineTo(12f * s, 16f * s)
+                                lineTo(5f * s, 21f * s)
+                                lineTo(5f * s, 5f * s)
+                                lineTo(7f * s, 3f * s)
+                                lineTo(17f * s, 3f * s)
+                                lineTo(19f * s, 5f * s)
+                                close()
+                            }
+                            drawPath(
+                                path = path,
+                                color = AppColors.Primary.copy(alpha = 0.55f),
+                                style = Stroke(width = 2f * s, cap = StrokeCap.Round, join = StrokeJoin.Round),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
