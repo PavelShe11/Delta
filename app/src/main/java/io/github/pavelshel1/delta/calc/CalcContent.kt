@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +36,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
@@ -56,6 +59,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -69,10 +73,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
@@ -80,6 +86,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -129,6 +136,7 @@ private val LocalHazeState = compositionLocalOf { HazeState() }
 fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modifier = Modifier) {
     val state by component.state.subscribeAsState()
     val focusManager = LocalFocusManager.current
+    var pendingHistoryOpen by remember { mutableStateOf(false) }
 
     val filledCount = listOf(
         state.tStartText, state.tEndText,
@@ -141,6 +149,31 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
 
     val listState = rememberLazyListState()
     val density = LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
+
+    LaunchedEffect(pendingHistoryOpen, imeVisible) {
+        if (pendingHistoryOpen && !imeVisible) {
+            pendingHistoryOpen = false
+            component.onHistoryRequested()
+        }
+    }
+
+    var pendingUnitKey by remember { mutableStateOf<FieldKey?>(null) }
+
+    val focusTStart = remember { FocusRequester() }
+    val focusTEnd = remember { FocusRequester() }
+    val focusPStart = remember { FocusRequester() }
+    val focusPEnd = remember { FocusRequester() }
+    val focusTime = remember { FocusRequester() }
+
+    LaunchedEffect(pendingUnitKey, imeVisible) {
+        val key = pendingUnitKey ?: return@LaunchedEffect
+        if (!imeVisible) {
+            pendingUnitKey = null
+            component.onUnitChipTapped(key)
+        }
+    }
+
     val floatingBottomPadding = 16.dp
     val floatingBottomPaddingPx = with(density) { floatingBottomPadding.toPx() }
     var floatingHeightPx by remember { mutableIntStateOf(0) }
@@ -193,7 +226,11 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 if (historyCount > 0) {
                                     IconButton(onClick = {
                                         focusManager.clearFocus()
-                                        component.onHistoryRequested()
+                                        if (imeVisible) {
+                                            pendingHistoryOpen = true
+                                        } else {
+                                            component.onHistoryRequested()
+                                        }
                                     }) {
                                         Icon(
                                             imageVector = Icons.Default.History,
@@ -234,12 +271,18 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTStartChanged,
-                                onUnitTapped = { component.onUnitChipTapped(FieldKey.TStart) },
+                                onUnitTapped = {
+                                    focusManager.clearFocus()
+                                    if (imeVisible) pendingUnitKey = FieldKey.TStart
+                                    else component.onUnitChipTapped(FieldKey.TStart)
+                                },
                                 kelvinHint = if (state.tStartUnitIdx == 1) toKelvin(
                                     state.tStartText,
                                     true
                                 ).ifEmpty { null } else null,
-                                modifier = Modifier.animateItem()
+                                imeAction = ImeAction.Next,
+                                onImeAction = { focusTEnd.requestFocus() },
+                                modifier = Modifier.animateItem().focusRequester(focusTStart),
                             )
                         }
 
@@ -253,12 +296,18 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTEndChanged,
-                                onUnitTapped = { component.onUnitChipTapped(FieldKey.TEnd) },
+                                onUnitTapped = {
+                                    focusManager.clearFocus()
+                                    if (imeVisible) pendingUnitKey = FieldKey.TEnd
+                                    else component.onUnitChipTapped(FieldKey.TEnd)
+                                },
                                 kelvinHint = if (state.tEndUnitIdx == 1) toKelvin(
                                     state.tEndText,
                                     true
                                 ).ifEmpty { null } else null,
-                                modifier = Modifier.animateItem()
+                                imeAction = ImeAction.Next,
+                                onImeAction = { focusPStart.requestFocus() },
+                                modifier = Modifier.animateItem().focusRequester(focusTEnd),
                             )
                         }
 
@@ -272,7 +321,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 hasUnitDropdown = false,
                                 onValueChange = component::onPStartChanged,
                                 onUnitTapped = {},
-                                modifier = Modifier.animateItem()
+                                imeAction = ImeAction.Next,
+                                onImeAction = { focusPEnd.requestFocus() },
+                                modifier = Modifier.animateItem().focusRequester(focusPStart),
                             )
                         }
 
@@ -286,7 +337,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 hasUnitDropdown = false,
                                 onValueChange = component::onPEndChanged,
                                 onUnitTapped = {},
-                                modifier = Modifier.animateItem()
+                                imeAction = ImeAction.Next,
+                                onImeAction = { focusTime.requestFocus() },
+                                modifier = Modifier.animateItem().focusRequester(focusPEnd),
                             )
                         }
 
@@ -301,7 +354,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 hasUnitDropdown = false,
                                 onValueChange = component::onTimeChanged,
                                 onUnitTapped = {},
-                                modifier = Modifier.animateItem()
+                                imeAction = ImeAction.Done,
+                                onImeAction = { focusManager.clearFocus() },
+                                modifier = Modifier.animateItem().focusRequester(focusTime),
                             )
                         }
 
@@ -413,6 +468,8 @@ private fun InputCard(
     onUnitTapped: () -> Unit,
     modifier: Modifier = Modifier,
     kelvinHint: String? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -441,7 +498,8 @@ private fun InputCard(
             fontWeight = if (value.isNotEmpty()) FontWeight.Normal else FontWeight.Light,
             color = if (value.isNotEmpty()) AppColors.OnSurface else AppColors.Outline,
         ),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = imeAction),
+        keyboardActions = KeyboardActions(onAny = { onImeAction() }),
         singleLine = true,
         cursorBrush = SolidColor(AppColors.Primary),
         decorationBox = { innerTextField ->
@@ -729,33 +787,41 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(
-                    1.dp,
-                    AppColors.OutlineVar,
-                    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-                )
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "ФОРМУЛА РАСЧЁТА",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.1.sp,
-                color = AppColors.OnSurfaceVar,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Canvas(modifier = Modifier.size(14.dp)) {
+                    val sw = 2f / 24f * size.width
+                    fun x(v: Float) = v / 24f * size.width
+                    fun y(v: Float) = v / 24f * size.height
+                    drawLine(AppColors.OnSurfaceVar, Offset(x(4f), y(7f)),  Offset(x(20f), y(7f)),  strokeWidth = sw, cap = StrokeCap.Round)
+                    drawLine(AppColors.OnSurfaceVar, Offset(x(4f), y(12f)), Offset(x(14f), y(12f)), strokeWidth = sw, cap = StrokeCap.Round)
+                    drawLine(AppColors.OnSurfaceVar, Offset(x(4f), y(17f)), Offset(x(17f), y(17f)), strokeWidth = sw, cap = StrokeCap.Round)
+                }
+                Text(
+                    text = "ФОРМУЛА РАСЧЁТА",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.1.sp,
+                    color = AppColors.OnSurfaceVar,
+                )
+            }
             Text(
                 text = "ΔP",
-                fontSize = 14.sp,
+                fontSize = 15.sp,
                 fontStyle = FontStyle.Italic,
                 fontWeight = FontWeight.SemiBold,
                 color = AppColors.RVar,
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(AppColors.RVar.copy(alpha = 0.12f))
-                    .border(1.dp, AppColors.RVar.copy(alpha = 0.30f), CircleShape)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .border(1.5.dp, AppColors.RVar.copy(alpha = 0.30f), CircleShape)
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
             )
         }
 
@@ -764,15 +830,25 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 18.dp),
+                .padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             DeltaPAbstractFormula()
 
-            HorizontalDivider(
-                color = AppColors.OutlineVar,
-                modifier = Modifier.padding(vertical = 14.dp, horizontal = 16.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 14.dp)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            0f to Color.Transparent,
+                            0.2f to AppColors.OutlineVar,
+                            0.8f to AppColors.OutlineVar,
+                            1f to Color.Transparent,
+                        )
+                    ),
             )
 
             DeltaPFormulaWithValues(
