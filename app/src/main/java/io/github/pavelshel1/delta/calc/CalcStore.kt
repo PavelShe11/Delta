@@ -26,10 +26,10 @@ interface CalcStore : Store<CalcStore.Intent, CalcState, CalcStore.Label> {
 data class CalcEntry(
     val tStartCelsius: String,
     val tStartKelvin: String,
-    val tStartUnitIdx: Int,
     val tEndCelsius: String,
     val tEndKelvin: String,
-    val tEndUnitIdx: Int,
+    val tUnitIdx: Int,
+    val pUnitIdx: Int,
     val pStart: String,
     val pEnd: String,
     val pStartBar: String,

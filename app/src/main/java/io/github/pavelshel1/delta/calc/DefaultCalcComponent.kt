@@ -44,9 +44,9 @@ class DefaultCalcComponent(
         handleBackButton = false,
         childFactory = { fieldKey, ctx ->
             val unitIdx = when (fieldKey) {
-                FieldKey.TStart -> store.state.tStartUnitIdx
-                FieldKey.TEnd   -> store.state.tEndUnitIdx
-                else            -> 0
+                FieldKey.TStart, FieldKey.TEnd                                           -> store.state.tUnitIdx
+                FieldKey.PStart, FieldKey.PEnd, FieldKey.PStartBar, FieldKey.PEndBar     -> store.state.pUnitIdx
+                else                                                                      -> 0
             }
             DefaultUnitSheetComponent(
                 componentContext = ctx,

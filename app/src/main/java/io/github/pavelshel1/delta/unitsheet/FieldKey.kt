@@ -23,12 +23,22 @@ sealed interface FieldKey : Parcelable {
     data object PStart : FieldKey {
         @IgnoredOnParcel override val varMain = "P"
         @IgnoredOnParcel override val varSub  = "нач"
-        @IgnoredOnParcel override val units   = listOf("МПа", "кПа", "бар", "атм")
+        @IgnoredOnParcel override val units   = listOf("МПа", "кгс/см²")
     }
     data object PEnd : FieldKey {
         @IgnoredOnParcel override val varMain = "P"
         @IgnoredOnParcel override val varSub  = "кон"
-        @IgnoredOnParcel override val units   = listOf("МПа", "кПа", "бар", "атм")
+        @IgnoredOnParcel override val units   = listOf("МПа", "кгс/см²")
+    }
+    data object PStartBar : FieldKey {
+        @IgnoredOnParcel override val varMain = "P"
+        @IgnoredOnParcel override val varSub  = "б.нач"
+        @IgnoredOnParcel override val units   = listOf("МПа", "кгс/см²")
+    }
+    data object PEndBar : FieldKey {
+        @IgnoredOnParcel override val varMain = "P"
+        @IgnoredOnParcel override val varSub  = "б.кон"
+        @IgnoredOnParcel override val units   = listOf("МПа", "кгс/см²")
     }
     data object Time : FieldKey {
         @IgnoredOnParcel override val varMain = "t"

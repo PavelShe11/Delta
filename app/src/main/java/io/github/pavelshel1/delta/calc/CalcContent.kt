@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -82,12 +83,15 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
@@ -114,6 +118,7 @@ private val LocalHazeState = compositionLocalOf { HazeState() }
 @Composable
 fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modifier = Modifier) {
     val state by component.state.subscribeAsState()
+    val pUnitLabel = FieldKey.PStart.units[state.pUnitIdx]
     val focusManager = LocalFocusManager.current
     var pendingHistoryOpen by remember { mutableStateOf(false) }
 
@@ -138,6 +143,12 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     }
 
     var pendingUnitKey by remember { mutableStateOf<FieldKey?>(null) }
+
+    fun onPressureUnitTapped(key: FieldKey) {
+        focusManager.clearFocus()
+        if (imeVisible) pendingUnitKey = key
+        else component.onUnitChipTapped(key)
+    }
 
     val focusTStart = remember { FocusRequester() }
     val focusTEnd = remember { FocusRequester() }
@@ -251,7 +262,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varSub = "нач",
                                 description = "температура в начале",
                                 value = state.tStartText.toDisplayString(),
-                                unitLabel = FieldKey.TStart.units[state.tStartUnitIdx],
+                                unitLabel = FieldKey.TStart.units[state.tUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTStartChanged,
                                 onUnitTapped = {
@@ -259,7 +270,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                     if (imeVisible) pendingUnitKey = FieldKey.TStart
                                     else component.onUnitChipTapped(FieldKey.TStart)
                                 },
-                                kelvinHint = if (state.tStartUnitIdx == 0) state.tStartKelvin.toDisplayString()
+                                kelvinHint = if (state.tUnitIdx == 0) state.tStartKelvin.toDisplayString()
                                     .ifEmpty { null } else null,
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusTEnd.requestFocus() },
@@ -276,7 +287,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varSub = "кон",
                                 description = "температура в конце",
                                 value = state.tEndText.toDisplayString(),
-                                unitLabel = FieldKey.TEnd.units[state.tEndUnitIdx],
+                                unitLabel = FieldKey.TEnd.units[state.tUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTEndChanged,
                                 onUnitTapped = {
@@ -284,7 +295,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                     if (imeVisible) pendingUnitKey = FieldKey.TEnd
                                     else component.onUnitChipTapped(FieldKey.TEnd)
                                 },
-                                kelvinHint = if (state.tEndUnitIdx == 0) state.tEndKelvin.toDisplayString()
+                                kelvinHint = if (state.tUnitIdx == 0) state.tEndKelvin.toDisplayString()
                                     .ifEmpty { null } else null,
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusPStart.requestFocus() },
@@ -300,10 +311,10 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varMain = "P", varSub = "нач",
                                 description = "давление в начале",
                                 value = state.pStart.toDisplayString(),
-                                unitLabel = "бар",
-                                hasUnitDropdown = false,
+                                unitLabel = pUnitLabel,
+                                hasUnitDropdown = true,
                                 onValueChange = component::onPStartChanged,
-                                onUnitTapped = {},
+                                onUnitTapped = { onPressureUnitTapped(FieldKey.PStart) },
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusPStartBar.requestFocus() },
                                 modifier = Modifier
@@ -318,10 +329,10 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varMain = "P", varSub = "б.нач",
                                 description = "давление барометрическое в начале",
                                 value = state.pStartBar.toDisplayString(),
-                                unitLabel = "бар",
-                                hasUnitDropdown = false,
+                                unitLabel = pUnitLabel,
+                                hasUnitDropdown = true,
                                 onValueChange = component::onPStartBarChanged,
-                                onUnitTapped = {},
+                                onUnitTapped = { onPressureUnitTapped(FieldKey.PStartBar) },
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusPEnd.requestFocus() },
                                 modifier = Modifier
@@ -336,10 +347,10 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varMain = "P", varSub = "кон",
                                 description = "давление в конце",
                                 value = state.pEnd.toDisplayString(),
-                                unitLabel = "бар",
-                                hasUnitDropdown = false,
+                                unitLabel = pUnitLabel,
+                                hasUnitDropdown = true,
                                 onValueChange = component::onPEndChanged,
-                                onUnitTapped = {},
+                                onUnitTapped = { onPressureUnitTapped(FieldKey.PEnd) },
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusPEndBar.requestFocus() },
                                 modifier = Modifier
@@ -354,10 +365,10 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varMain = "P", varSub = "б.кон",
                                 description = "давление барометрическое в конце",
                                 value = state.pEndBar.toDisplayString(),
-                                unitLabel = "бар",
-                                hasUnitDropdown = false,
+                                unitLabel = pUnitLabel,
+                                hasUnitDropdown = true,
                                 onValueChange = component::onPEndBarChanged,
-                                onUnitTapped = {},
+                                onUnitTapped = { onPressureUnitTapped(FieldKey.PEndBar) },
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusTime.requestFocus() },
                                 modifier = Modifier
@@ -514,6 +525,32 @@ private fun InputCard(
     onImeAction: () -> Unit = {},
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    var tfValue by remember { mutableStateOf(TextFieldValue(value)) }
+    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val scrollState = rememberScrollState()
+    var boxWidthPx by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(value) {
+        val incomingBD = value.toBigDecimalOrNull()
+        val localBD = tfValue.text.toBigDecimalOrNull()
+        if (incomingBD != localBD) {
+            tfValue = TextFieldValue(value, TextRange(value.length))
+        }
+    }
+
+    LaunchedEffect(tfValue.selection, textLayout) {
+        val layout = textLayout ?: return@LaunchedEffect
+        if (tfValue.text.isEmpty()) return@LaunchedEffect
+        val cursor = tfValue.selection.end.coerceIn(0, tfValue.text.length)
+        val cursorX = layout.getCursorRect(cursor).left.toInt()
+        val visStart = scrollState.value
+        val visEnd = visStart + boxWidthPx
+        val pad = 32
+        when {
+            cursorX < visStart + pad -> scrollState.animateScrollTo((cursorX - pad).coerceAtLeast(0))
+            cursorX > visEnd - pad   -> scrollState.animateScrollTo((cursorX - boxWidthPx + pad).coerceAtLeast(0))
+        }
+    }
 
     val borderColor by animateColorAsState(
         targetValue = if (isFocused) AppColors.Primary else AppColors.OutlineVar,
@@ -527,9 +564,12 @@ private fun InputCard(
     )
 
     BasicTextField(
-        value = value,
+        value = tfValue,
         onValueChange = { v ->
-            if (v.isEmpty() || v.matches(Regex("-?\\d*\\.?\\d*"))) onValueChange(v)
+            if (v.text.isEmpty() || v.text.matches(Regex("-?\\d*\\.?\\d*"))) {
+                tfValue = v
+                onValueChange(v.text)
+            }
         },
         modifier = modifier
             .fillMaxWidth()
@@ -943,6 +983,7 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
                 pEndBar = state.pEndBar.toDisplayString(),
                 tStartK = state.tStartKelvin.toDisplayString(),
                 tEndK = state.tEndKelvin.toDisplayString(),
+                result = state.result?.toDouble(),
             )
         }
     }

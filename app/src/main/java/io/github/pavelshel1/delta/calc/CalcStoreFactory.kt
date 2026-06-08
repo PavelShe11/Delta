@@ -2,6 +2,7 @@ package io.github.pavelshel1.delta.calc
 
 import com.arkivanov.essenty.statekeeper.StateKeeper
 import java.math.BigDecimal
+import java.math.MathContext
 import com.arkivanov.mvikotlin.core.store.Reducer
 import com.arkivanov.mvikotlin.core.store.Store
 import com.arkivanov.mvikotlin.core.store.StoreFactory
@@ -65,7 +66,7 @@ class CalcStoreFactory(
             when (intent) {
 
                 is CalcStore.Intent.ChangeTStart -> {
-                    if (state().tStartUnitIdx == 0) {
+                    if (state().tUnitIdx == 0) {
                         dispatch(Msg.TStartChanged(celsius = intent.text, kelvin = celsiusToKelvin(intent.text)))
                     } else {
                         dispatch(Msg.TStartChanged(celsius = kelvinToCelsius(intent.text), kelvin = intent.text))
@@ -74,7 +75,7 @@ class CalcStoreFactory(
                 }
 
                 is CalcStore.Intent.ChangeTEnd -> {
-                    if (state().tEndUnitIdx == 0) {
+                    if (state().tUnitIdx == 0) {
                         dispatch(Msg.TEndChanged(celsius = intent.text, kelvin = celsiusToKelvin(intent.text)))
                     } else {
                         dispatch(Msg.TEndChanged(celsius = kelvinToCelsius(intent.text), kelvin = intent.text))
@@ -99,10 +100,10 @@ class CalcStoreFactory(
                             CalcEntry(
                                 tStartCelsius = s.tStartCelsius?.toPlainString() ?: "",
                                 tStartKelvin  = s.tStartKelvin?.toPlainString()  ?: "",
-                                tStartUnitIdx = s.tStartUnitIdx,
                                 tEndCelsius   = s.tEndCelsius?.toPlainString()   ?: "",
                                 tEndKelvin    = s.tEndKelvin?.toPlainString()    ?: "",
-                                tEndUnitIdx   = s.tEndUnitIdx,
+                                tUnitIdx      = s.tUnitIdx,
+                                pUnitIdx      = s.pUnitIdx,
                                 pStart        = s.pStart?.toPlainString()        ?: "",
                                 pEnd          = s.pEnd?.toPlainString()          ?: "",
                                 pStartBar     = s.pStartBar?.toPlainString()     ?: "1",
@@ -133,18 +134,33 @@ class CalcStoreFactory(
             is Msg.RecalcResult  -> withResult()
 
             is Msg.UnitSelected -> when (msg.fieldKey) {
-                FieldKey.TStart -> copy(tStartUnitIdx = msg.unitIdx)
-                FieldKey.TEnd   -> copy(tEndUnitIdx   = msg.unitIdx)
-                else            -> this
+                FieldKey.TStart, FieldKey.TEnd -> copy(tUnitIdx = msg.unitIdx)
+                FieldKey.PStart, FieldKey.PEnd, FieldKey.PStartBar, FieldKey.PEndBar -> {
+                    if (msg.unitIdx == pUnitIdx) return this
+                    val base = BigDecimal("0.0980665")
+                    val mc = MathContext.DECIMAL64
+                    fun convert(v: BigDecimal?) = if (msg.unitIdx == 1)
+                        v?.divide(base, mc)?.setScale(3, java.math.RoundingMode.HALF_UP)?.stripTrailingZeros()
+                    else
+                        v?.multiply(base, mc)?.setScale(3, java.math.RoundingMode.HALF_UP)?.stripTrailingZeros()
+                    copy(
+                        pUnitIdx  = msg.unitIdx,
+                        pStart    = convert(pStart),
+                        pEnd      = convert(pEnd),
+                        pStartBar = convert(pStartBar),
+                        pEndBar   = convert(pEndBar),
+                    ).withResult()
+                }
+                else -> this
             }
 
             is Msg.EntryLoaded -> copy(
                 tStartCelsius = msg.entry.tStartCelsius.toBigDecimalOrNull(),
                 tStartKelvin  = msg.entry.tStartKelvin.toBigDecimalOrNull(),
-                tStartUnitIdx = msg.entry.tStartUnitIdx,
                 tEndCelsius   = msg.entry.tEndCelsius.toBigDecimalOrNull(),
                 tEndKelvin    = msg.entry.tEndKelvin.toBigDecimalOrNull(),
-                tEndUnitIdx   = msg.entry.tEndUnitIdx,
+                tUnitIdx      = msg.entry.tUnitIdx,
+                pUnitIdx      = msg.entry.pUnitIdx,
                 pStart        = msg.entry.pStart.toBigDecimalOrNull(),
                 pEnd          = msg.entry.pEnd.toBigDecimalOrNull(),
                 pStartBar     = msg.entry.pStartBar.toBigDecimalOrNull() ?: BigDecimal.ONE,

@@ -28,6 +28,10 @@ private object NoOpStateKeeper : StateKeeper {
 private const val CELSIUS = 0
 private const val KELVIN  = 1
 
+// Индексы: 0=МПа, 1=кгс/см²
+private const val MPA = 0
+private const val KGS = 1
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalcStoreTest {
 
@@ -150,6 +154,96 @@ class CalcStoreTest {
         // abs pressures: pNabs=1+1=2, pKabs=1+1=2
         val expected = 100.0 / 4.0 * (1.0 - 2.0 * 300.0 / (2.0 * 291.0))
         assertEquals(expected, s.state.result!!.toDouble(), 1e-9)
+    }
+
+    // --- Синхронизация единиц температуры ---
+
+    @Test
+    fun `temperature unit defaults to Celsius (index 0)`() = runTest {
+        assertEquals(CELSIUS, store().state.tUnitIdx)
+    }
+
+    @Test
+    fun `selecting temperature unit on TStart syncs TEnd`() = runTest {
+        val s = store()
+        s.accept(CalcStore.Intent.SelectUnit(FieldKey.TStart, KELVIN))
+        advanceUntilIdle()
+        assertEquals(KELVIN, s.state.tUnitIdx)
+    }
+
+    @Test
+    fun `selecting temperature unit on TEnd syncs TStart`() = runTest {
+        val s = store()
+        s.accept(CalcStore.Intent.SelectUnit(FieldKey.TEnd, KELVIN))
+        advanceUntilIdle()
+        assertEquals(KELVIN, s.state.tUnitIdx)
+    }
+
+    // --- Синхронизация единиц давления ---
+
+    @Test
+    fun `selecting pressure unit on PStart syncs all pressure fields`() = runTest {
+        val s = store()
+        s.accept(CalcStore.Intent.SelectUnit(FieldKey.PStart, KGS))
+        advanceUntilIdle()
+        assertEquals(KGS, s.state.pUnitIdx)
+    }
+
+    @Test
+    fun `selecting pressure unit on PEnd syncs all pressure fields`() = runTest {
+        val s = store()
+        s.accept(CalcStore.Intent.SelectUnit(FieldKey.PEnd, KGS))
+        advanceUntilIdle()
+        assertEquals(KGS, s.state.pUnitIdx)
+    }
+
+    @Test
+    fun `selecting pressure unit on PStartBar syncs all pressure fields`() = runTest {
+        val s = store()
+        s.accept(CalcStore.Intent.SelectUnit(FieldKey.PStartBar, KGS))
+        advanceUntilIdle()
+        assertEquals(KGS, s.state.pUnitIdx)
+    }
+
+    @Test
+    fun `selecting pressure unit on PEndBar syncs all pressure fields`() = runTest {
+        val s = store()
+        s.accept(CalcStore.Intent.SelectUnit(FieldKey.PEndBar, KGS))
+        advanceUntilIdle()
+        assertEquals(KGS, s.state.pUnitIdx)
+    }
+
+    @Test
+    fun `pressure unit defaults to MPa (index 0)`() = runTest {
+        assertEquals(MPA, store().state.pUnitIdx)
+    }
+
+    @Test
+    fun `formula result is unit-independent when all pressure fields use same unit`() = runTest {
+        // Вводим в МПа
+        val sMpa = store()
+        sMpa.accept(CalcStore.Intent.ChangeTStart("20"))
+        sMpa.accept(CalcStore.Intent.ChangeTEnd("18"))
+        sMpa.accept(CalcStore.Intent.ChangePStart("1"))
+        sMpa.accept(CalcStore.Intent.ChangePEnd("0.9"))
+        sMpa.accept(CalcStore.Intent.ChangePStartBar("0.101325"))
+        sMpa.accept(CalcStore.Intent.ChangePEndBar("0.101325"))
+        advanceUntilIdle()
+        val resultMpa = sMpa.state.result!!.toDouble()
+
+        // Те же данные, затем переключаем в кгс/см² — конвертация автоматическая
+        val sKgs = store()
+        sKgs.accept(CalcStore.Intent.ChangeTStart("20"))
+        sKgs.accept(CalcStore.Intent.ChangeTEnd("18"))
+        sKgs.accept(CalcStore.Intent.ChangePStart("1"))
+        sKgs.accept(CalcStore.Intent.ChangePEnd("0.9"))
+        sKgs.accept(CalcStore.Intent.ChangePStartBar("0.101325"))
+        sKgs.accept(CalcStore.Intent.ChangePEndBar("0.101325"))
+        sKgs.accept(CalcStore.Intent.SelectUnit(FieldKey.PStart, KGS))
+        advanceUntilIdle()
+        val resultKgs = sKgs.state.result!!.toDouble()
+
+        assertEquals(resultMpa, resultKgs, 1e-6)
     }
 
     // --- filledCount ---

@@ -2,16 +2,17 @@ package io.github.pavelshel1.delta.calc
 
 import java.math.BigDecimal
 import java.math.MathContext
+import java.math.RoundingMode
 import kotlinx.serialization.Serializable
 
 data class CalcState(
     val tStartCelsius: BigDecimal? = null,
     val tStartKelvin: BigDecimal? = null,
-    val tStartUnitIdx: Int    = 0,
 
     val tEndCelsius: BigDecimal? = null,
     val tEndKelvin: BigDecimal? = null,
-    val tEndUnitIdx: Int    = 0,
+    val tUnitIdx: Int        = 0,
+    val pUnitIdx: Int        = 0,
 
     val pStart: BigDecimal?    = null,
     val pEnd: BigDecimal?      = null,
@@ -21,8 +22,8 @@ data class CalcState(
 
     val result: BigDecimal? = null,
 ) {
-    val tStartText: BigDecimal? get() = if (tStartUnitIdx == 0) tStartCelsius else tStartKelvin
-    val tEndText: BigDecimal?   get() = if (tEndUnitIdx == 0) tEndCelsius else tEndKelvin
+    val tStartText: BigDecimal? get() = if (tUnitIdx == 0) tStartCelsius else tStartKelvin
+    val tEndText: BigDecimal?   get() = if (tUnitIdx == 0) tEndCelsius else tEndKelvin
 
     val filledCount: Int get() = listOf(
         tStartText, tEndText, pStart, pEnd, pStartBar, pEndBar, time
@@ -62,6 +63,7 @@ internal fun CalcState.computeResult(): BigDecimal? {
     val denom = pNabs.multiply(tKK, MC)
     val ratio = pKabs.multiply(tNk, MC).divide(denom, MC)
     return BigDecimal("100").divide(t, MC).multiply(BigDecimal.ONE.subtract(ratio, MC), MC)
+        .setScale(3, RoundingMode.HALF_UP)
 }
 
 internal fun CalcState.withResult(): CalcState = copy(result = computeResult())
@@ -70,10 +72,10 @@ internal fun CalcState.withResult(): CalcState = copy(result = computeResult())
 data class CalcStateSnapshot(
     val tStartCelsius: String? = null,
     val tStartKelvin: String?  = null,
-    val tStartUnitIdx: Int     = 0,
     val tEndCelsius: String?   = null,
     val tEndKelvin: String?    = null,
-    val tEndUnitIdx: Int       = 0,
+    val tUnitIdx: Int          = 0,
+    val pUnitIdx: Int          = 0,
     val pStart: String?        = null,
     val pEnd: String?          = null,
     val pStartBar: String?     = null,
@@ -84,10 +86,10 @@ data class CalcStateSnapshot(
 internal fun CalcState.toSnapshot() = CalcStateSnapshot(
     tStartCelsius = tStartCelsius?.toPlainString(),
     tStartKelvin  = tStartKelvin?.toPlainString(),
-    tStartUnitIdx = tStartUnitIdx,
     tEndCelsius   = tEndCelsius?.toPlainString(),
     tEndKelvin    = tEndKelvin?.toPlainString(),
-    tEndUnitIdx   = tEndUnitIdx,
+    tUnitIdx      = tUnitIdx,
+    pUnitIdx      = pUnitIdx,
     pStart        = pStart?.toPlainString(),
     pEnd          = pEnd?.toPlainString(),
     pStartBar     = pStartBar?.toPlainString(),
@@ -98,10 +100,10 @@ internal fun CalcState.toSnapshot() = CalcStateSnapshot(
 internal fun CalcStateSnapshot.toCalcState() = CalcState(
     tStartCelsius = tStartCelsius?.toBigDecimalOrNull(),
     tStartKelvin  = tStartKelvin?.toBigDecimalOrNull(),
-    tStartUnitIdx = tStartUnitIdx,
     tEndCelsius   = tEndCelsius?.toBigDecimalOrNull(),
     tEndKelvin    = tEndKelvin?.toBigDecimalOrNull(),
-    tEndUnitIdx   = tEndUnitIdx,
+    tUnitIdx      = tUnitIdx,
+    pUnitIdx      = pUnitIdx,
     pStart        = pStart?.toBigDecimalOrNull(),
     pEnd          = pEnd?.toBigDecimalOrNull(),
     pStartBar     = pStartBar?.toBigDecimalOrNull() ?: BigDecimal.ONE,
