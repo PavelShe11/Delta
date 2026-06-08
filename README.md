@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/design/delta-icon-1024.png" width="120" alt="Delta" />
+  <img src="dоcs/design/delta-icon-1024.png" width="120" alt="Delta" />
 </p>
 
 <h1 align="center">Delta</h1>
