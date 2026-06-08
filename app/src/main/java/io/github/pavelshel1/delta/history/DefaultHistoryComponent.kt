@@ -12,6 +12,7 @@ class DefaultHistoryComponent(
     componentContext: ComponentContext,
     private val repository: HistoryRepository,
     private val onDismissAction: () -> Unit,
+    private val onEntrySelectedAction: (HistoryEntry) -> Unit,
 ) : HistoryComponent, ComponentContext by componentContext {
 
     private val scope = coroutineScope(Dispatchers.Main.immediate)
@@ -28,4 +29,6 @@ class DefaultHistoryComponent(
     override fun onClear() {
         scope.launch(Dispatchers.IO) { repository.deleteAll() }
     }
+
+    override fun onEntrySelected(entry: HistoryEntry) = onEntrySelectedAction(entry)
 }

@@ -236,9 +236,11 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                 items(entries, key = { it.id }) { entry ->
                     val id = entry.id
                     val onDelete = remember(id) { { component.onDelete(id) } }
+                    val onSelect = remember(entry) { { component.onEntrySelected(entry) } }
                     HistoryCard(
                         entry = entry,
                         onDelete = onDelete,
+                        onClick = onSelect,
                         modifier = Modifier.animateItem(),
                         abstractHeightDp = abstractHeightDp,
                         resultHeightDp = resultHeightCache[entry.id],

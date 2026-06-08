@@ -2,6 +2,7 @@ package io.github.pavelshel1.delta.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,7 @@ import java.util.Date
 fun HistoryCard(
     entry: HistoryEntry,
     onDelete: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     abstractHeightDp: Dp? = null,
     resultHeightDp: Dp? = null,
@@ -55,7 +57,8 @@ fun HistoryCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(AppColors.SurfaceHighest),
+            .background(AppColors.SurfaceHighest)
+            .clickable(onClick = onClick),
     ) {
         // Header
         Row(

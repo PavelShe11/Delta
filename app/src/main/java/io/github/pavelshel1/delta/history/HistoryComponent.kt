@@ -7,4 +7,5 @@ interface HistoryComponent {
     fun onDismiss()
     fun onDelete(id: Long)
     fun onClear()
+    fun onEntrySelected(entry: HistoryEntry)
 }

@@ -18,4 +18,5 @@ interface CalcComponent {
     fun onPStartBarChanged(text: String)
     fun onPEndBarChanged(text: String)
     fun onTimeChanged(text: String)
+    fun onEntrySelected(entry: io.github.pavelshel1.delta.history.HistoryEntry)
 }

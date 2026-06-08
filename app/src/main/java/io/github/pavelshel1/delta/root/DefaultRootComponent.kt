@@ -20,6 +20,7 @@ import io.github.pavelshel1.delta.history.DefaultHistoryComponent
 import io.github.pavelshel1.delta.history.HistoryComponent
 import io.github.pavelshel1.delta.history.HistoryEntry
 import io.github.pavelshel1.delta.history.HistoryRepository
+import io.github.pavelshel1.delta.unitsheet.FieldKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -55,6 +56,8 @@ class DefaultRootComponent(
                             tEndK       = entry.tEndKelvin,
                             result      = entry.result,
                             timestampMs = System.currentTimeMillis(),
+                            tUnit       = FieldKey.TStart.units[entry.tUnitIdx],
+                            pUnit       = FieldKey.PStart.units[entry.pUnitIdx],
                         )
                     )
                 }
@@ -67,9 +70,13 @@ class DefaultRootComponent(
         handleBackButton = true,
         childFactory = { _, ctx ->
             DefaultHistoryComponent(
-                componentContext = ctx,
-                repository       = repository,
-                onDismissAction  = ::closeHistory,
+                componentContext      = ctx,
+                repository            = repository,
+                onDismissAction       = ::closeHistory,
+                onEntrySelectedAction = { entry ->
+                    closeHistory()
+                    calc.onEntrySelected(entry)
+                },
             )
         },
     )

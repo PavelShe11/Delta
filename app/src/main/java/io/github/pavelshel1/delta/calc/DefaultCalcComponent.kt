@@ -13,6 +13,7 @@ import com.arkivanov.mvikotlin.core.instancekeeper.getStore
 import com.arkivanov.mvikotlin.core.rx.observer
 import com.arkivanov.mvikotlin.core.store.StoreFactory
 import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
+import io.github.pavelshel1.delta.history.HistoryEntry
 import io.github.pavelshel1.delta.unitsheet.DefaultUnitSheetComponent
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetComponent
@@ -97,5 +98,28 @@ class DefaultCalcComponent(
 
     override fun onTimeChanged(text: String) {
         store.accept(CalcStore.Intent.ChangeTime(text))
+    }
+
+    override fun onEntrySelected(entry: HistoryEntry) {
+        val tUnitIdx = FieldKey.TStart.units.indexOf(entry.tUnit).coerceAtLeast(0)
+        val pUnitIdx = FieldKey.PStart.units.indexOf(entry.pUnit).coerceAtLeast(0)
+        store.accept(
+            CalcStore.Intent.LoadEntry(
+                CalcEntry(
+                    tStartCelsius = kelvinToCelsius(entry.tStartK),
+                    tStartKelvin  = entry.tStartK,
+                    tEndCelsius   = kelvinToCelsius(entry.tEndK),
+                    tEndKelvin    = entry.tEndK,
+                    tUnitIdx      = tUnitIdx,
+                    pUnitIdx      = pUnitIdx,
+                    pStart        = entry.pStart,
+                    pEnd          = entry.pEnd,
+                    pStartBar     = entry.pStartBar,
+                    pEndBar       = entry.pEndBar,
+                    time          = entry.t,
+                    result        = entry.result,
+                )
+            )
+        )
     }
 }

@@ -28,6 +28,8 @@ class HistoryRepository(db: DeltaDatabase) {
             tEndK       = entry.tEndK,
             result      = entry.result,
             timestampMs = entry.timestampMs,
+            tUnit       = entry.tUnit,
+            pUnit       = entry.pUnit,
         )
     }
 
@@ -48,5 +50,7 @@ class HistoryRepository(db: DeltaDatabase) {
         tEndK       = tEndK,
         result      = result,
         timestampMs = timestampMs,
+        tUnit       = tUnit,
+        pUnit       = pUnit,
     )
 }

@@ -8,15 +8,17 @@ CREATE TABLE HistoryEntry (
     tStartK     TEXT    NOT NULL,
     tEndK       TEXT    NOT NULL,
     result      REAL    NOT NULL,
-    timestampMs INTEGER NOT NULL
+    timestampMs INTEGER NOT NULL,
+    tUnit       TEXT    NOT NULL DEFAULT '°C',
+    pUnit       TEXT    NOT NULL DEFAULT 'МПа'
 );
 
 selectAll:
 SELECT * FROM HistoryEntry ORDER BY timestampMs DESC;
 
 insert:
-INSERT INTO HistoryEntry (t, pStart, pEnd, pStartBar, pEndBar, tStartK, tEndK, result, timestampMs)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO HistoryEntry (t, pStart, pEnd, pStartBar, pEndBar, tStartK, tEndK, result, timestampMs, tUnit, pUnit)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteById:
 DELETE FROM HistoryEntry WHERE id = ?;
