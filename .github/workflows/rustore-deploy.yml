@@ -4,9 +4,9 @@ on:
   push:
     tags:
       - 'release/**'
+      - 'release-rustore/**'
 
 permissions:
-  contents: write
   actions: write
 
 jobs:
@@ -21,8 +21,8 @@ jobs:
       - name: Extract version name from tag
         id: version
         run: |
-          # Из тега release/0.0.1 берём всё после release/
-          VERSION_NAME="${GITHUB_REF#refs/tags/release/}"
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION_NAME="${TAG#*/}"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "Version name: $VERSION_NAME"
 
@@ -62,6 +62,14 @@ jobs:
             -PversionCode=${{ steps.version_code.outputs.code }} \
             -PversionName=${{ steps.version.outputs.name }}
 
+      - name: Upload AAB as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-aab-${{ steps.version.outputs.name }}-${{ steps.version_code.outputs.code }}
+          path: app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+
       - name: Install Python cryptography
         run: pip install cryptography
 
@@ -90,40 +98,3 @@ jobs:
             "https://public-api.rustore.ru/public/v1/application/io.github.pavelshel1.delta/version/${VERSION_ID}/aab" \
             --header "Public-Token: ${RUSTORE_TOKEN}" \
             --form "file=@${AAB_PATH}"
-
-      - name: Build signed release APKs (ABI splits)
-        env:
-          KEYSTORE_PATH: ${{ runner.temp }}/release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          ./gradlew assembleRelease \
-            -PversionCode=${{ steps.version_code.outputs.code }} \
-            -PversionName=${{ steps.version.outputs.name }}
-
-      - name: Collect APK paths
-        id: apks
-        run: |
-          APK_FILES=$(find app/build/outputs/apk/release -name "*.apk" | tr '\n' ' ')
-          echo "paths=$APK_FILES" >> "$GITHUB_OUTPUT"
-          echo "Found APKs:"
-          find app/build/outputs/apk/release -name "*.apk" -exec ls -lh {} \;
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "Release ${{ steps.version.outputs.name }}" \
-            --notes "versionCode: ${{ steps.version_code.outputs.code }}" \
-            --draft \
-            app/build/outputs/apk/release/*.apk
-
-      - name: Upload AAB as artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: release-aab-${{ steps.version.outputs.name }}-${{ steps.version_code.outputs.code }}
-          path: app/build/outputs/bundle/release/*.aab
-          retention-days: 14
