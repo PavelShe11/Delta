@@ -6,18 +6,20 @@ import io.github.pavelshel1.delta.unitsheet.FieldKey
 interface CalcStore : Store<CalcStore.Intent, CalcState, CalcStore.Label> {
 
     sealed interface Intent {
-        data class ChangeTStart(val text: String) : Intent
-        data class ChangeTEnd(val text: String)   : Intent
-        data class ChangePStart(val text: String) : Intent
-        data class ChangePEnd(val text: String)   : Intent
-        data class ChangeTime(val text: String)   : Intent
+        data class ChangeTStart(val text: String)    : Intent
+        data class ChangeTEnd(val text: String)      : Intent
+        data class ChangePStart(val text: String)    : Intent
+        data class ChangePEnd(val text: String)      : Intent
+        data class ChangePStartBar(val text: String) : Intent
+        data class ChangePEndBar(val text: String)   : Intent
+        data class ChangeTime(val text: String)      : Intent
         data class SelectUnit(val fieldKey: FieldKey, val unitIdx: Int) : Intent
         data object Save : Intent
         data class LoadEntry(val entry: CalcEntry) : Intent
     }
 
     sealed interface Label {
-        data object SavedToHistory : Label
+        data class SavedToHistory(val entry: CalcEntry) : Label
     }
 }
 
@@ -30,6 +32,8 @@ data class CalcEntry(
     val tEndUnitIdx: Int,
     val pStart: String,
     val pEnd: String,
+    val pStartBar: String,
+    val pEndBar: String,
     val time: String,
     val result: Double,
 )

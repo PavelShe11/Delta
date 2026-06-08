@@ -115,8 +115,11 @@ class CalcStoreTest {
         val s = store()
         s.accept(CalcStore.Intent.ChangeTStart("20"))  // 20°C → tNK=293
         s.accept(CalcStore.Intent.ChangeTEnd("18"))    // 18°C → tKK=291
+        s.accept(CalcStore.Intent.ChangePStart("1"))
+        s.accept(CalcStore.Intent.ChangePEnd("1"))
         advanceUntilIdle()
-        val expected = 100.0 / 4.0 * (1.0 - 1.0 * 293.0 / (1.0 * 291.0))
+        // abs pressures: pNabs=1+1=2, pKabs=1+1=2
+        val expected = 100.0 / 4.0 * (1.0 - 2.0 * 293.0 / (2.0 * 291.0))
         assertEquals(expected, s.state.result!!.toDouble(), 1e-9)
     }
 
@@ -125,6 +128,8 @@ class CalcStoreTest {
         val s = store()
         s.accept(CalcStore.Intent.ChangeTStart("20"))
         s.accept(CalcStore.Intent.ChangeTEnd("18"))
+        s.accept(CalcStore.Intent.ChangePStart("1"))
+        s.accept(CalcStore.Intent.ChangePEnd("1"))
         s.accept(CalcStore.Intent.ChangeTime("0"))
         advanceUntilIdle()
         assertNull(s.state.result)
@@ -135,12 +140,15 @@ class CalcStoreTest {
         val s = store()
         s.accept(CalcStore.Intent.ChangeTStart("20"))
         s.accept(CalcStore.Intent.ChangeTEnd("18"))
+        s.accept(CalcStore.Intent.ChangePStart("1"))
+        s.accept(CalcStore.Intent.ChangePEnd("1"))
         advanceUntilIdle()
         s.accept(CalcStore.Intent.SelectUnit(FieldKey.TStart, KELVIN))
         advanceUntilIdle()
         s.accept(CalcStore.Intent.ChangeTStart("300"))
         advanceUntilIdle()
-        val expected = 100.0 / 4.0 * (1.0 - 1.0 * 300.0 / (1.0 * 291.0))
+        // abs pressures: pNabs=1+1=2, pKabs=1+1=2
+        val expected = 100.0 / 4.0 * (1.0 - 2.0 * 300.0 / (2.0 * 291.0))
         assertEquals(expected, s.state.result!!.toDouble(), 1e-9)
     }
 
@@ -149,6 +157,7 @@ class CalcStoreTest {
     @Test
     fun `filledCount uses active field text`() = runTest {
         val s = store()
+        // Начальное: time=4, pStartBar=1, pEndBar=1 → 3
         assertEquals(3, s.state.filledCount)
         s.accept(CalcStore.Intent.ChangeTStart("20"))
         advanceUntilIdle()

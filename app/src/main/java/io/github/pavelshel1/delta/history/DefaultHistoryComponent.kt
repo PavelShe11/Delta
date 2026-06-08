@@ -20,6 +20,8 @@ class DefaultHistoryComponent(
                         t = "4",
                         pStart = "1",
                         pEnd = "1",
+                        pStartBar = "1",
+                        pEndBar = "1",
                         tStartK = "293",
                         tEndK = "298",
                         result = 0.167,

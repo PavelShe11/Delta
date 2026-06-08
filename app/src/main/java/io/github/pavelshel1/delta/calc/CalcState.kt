@@ -13,9 +13,11 @@ data class CalcState(
     val tEndKelvin: BigDecimal? = null,
     val tEndUnitIdx: Int    = 0,
 
-    val pStart: BigDecimal? = BigDecimal.ONE,
-    val pEnd: BigDecimal?    = BigDecimal.ONE,
-    val time: BigDecimal?    = BigDecimal.valueOf(4),
+    val pStart: BigDecimal?    = null,
+    val pEnd: BigDecimal?      = null,
+    val pStartBar: BigDecimal? = BigDecimal.ONE,
+    val pEndBar: BigDecimal?   = BigDecimal.ONE,
+    val time: BigDecimal?      = BigDecimal.valueOf(4),
 
     val result: BigDecimal? = null,
 ) {
@@ -23,7 +25,7 @@ data class CalcState(
     val tEndText: BigDecimal?   get() = if (tEndUnitIdx == 0) tEndCelsius else tEndKelvin
 
     val filledCount: Int get() = listOf(
-        tStartText, tEndText, pStart, pEnd, time
+        tStartText, tEndText, pStart, pEnd, pStartBar, pEndBar, time
     ).count { it != null }
 }
 
@@ -45,16 +47,20 @@ internal fun kelvinToCelsius(s: String): String {
 private val MC = MathContext.DECIMAL64
 
 internal fun CalcState.computeResult(): BigDecimal? {
-    val t   = time           ?: return null
-    val pN  = pStart         ?: return null
-    val pK  = pEnd           ?: return null
-    val tNk = tStartKelvin   ?: return null
-    val tKK = tEndKelvin     ?: return null
+    val t    = time      ?: return null
+    val pN   = pStart    ?: return null
+    val pK   = pEnd      ?: return null
+    val pNB  = pStartBar ?: return null
+    val pKB  = pEndBar   ?: return null
+    val tNk  = tStartKelvin ?: return null
+    val tKK  = tEndKelvin   ?: return null
+    val pNabs = pN.add(pNB)
+    val pKabs = pK.add(pKB)
     if (t.compareTo(BigDecimal.ZERO) == 0 ||
-        pN.compareTo(BigDecimal.ZERO) == 0 ||
+        pNabs.compareTo(BigDecimal.ZERO) == 0 ||
         tKK.compareTo(BigDecimal.ZERO) == 0) return null
-    val denom = pN.multiply(tKK, MC)
-    val ratio = pK.multiply(tNk, MC).divide(denom, MC)
+    val denom = pNabs.multiply(tKK, MC)
+    val ratio = pKabs.multiply(tNk, MC).divide(denom, MC)
     return BigDecimal("100").divide(t, MC).multiply(BigDecimal.ONE.subtract(ratio, MC), MC)
 }
 
@@ -72,6 +78,8 @@ data class CalcStateSnapshot(
     val tEndUnitIdx: Int       = 0,
     val pStart: String?        = null,
     val pEnd: String?          = null,
+    val pStartBar: String?     = null,
+    val pEndBar: String?       = null,
     val time: String?          = null,
 )
 
@@ -84,6 +92,8 @@ internal fun CalcState.toSnapshot() = CalcStateSnapshot(
     tEndUnitIdx   = tEndUnitIdx,
     pStart        = pStart?.toPlainString(),
     pEnd          = pEnd?.toPlainString(),
+    pStartBar     = pStartBar?.toPlainString(),
+    pEndBar       = pEndBar?.toPlainString(),
     time          = time?.toPlainString(),
 )
 
@@ -96,5 +106,7 @@ internal fun CalcStateSnapshot.toCalcState() = CalcState(
     tEndUnitIdx   = tEndUnitIdx,
     pStart        = pStart?.toBigDecimalOrNull(),
     pEnd          = pEnd?.toBigDecimalOrNull(),
+    pStartBar     = pStartBar?.toBigDecimalOrNull() ?: BigDecimal.ONE,
+    pEndBar       = pEndBar?.toBigDecimalOrNull()   ?: BigDecimal.ONE,
     time          = time?.toBigDecimalOrNull(),
 ).withResult()

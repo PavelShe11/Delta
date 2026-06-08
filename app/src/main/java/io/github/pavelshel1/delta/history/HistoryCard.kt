@@ -130,6 +130,8 @@ fun HistoryCard(
                 t = entry.t,
                 pStart = entry.pStart,
                 pEnd = entry.pEnd,
+                pStartBar = entry.pStartBar,
+                pEndBar = entry.pEndBar,
                 tStartK = entry.tStartK,
                 tEndK = entry.tEndK,
                 result = entry.result,

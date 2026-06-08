@@ -9,6 +9,8 @@ data class HistoryEntry(
     val t: String,
     val pStart: String,
     val pEnd: String,
+    val pStartBar: String,
+    val pEndBar: String,
     val tStartK: String,
     val tEndK: String,
     val result: Double,

@@ -15,5 +15,7 @@ interface CalcComponent {
     fun onTEndChanged(text: String)
     fun onPStartChanged(text: String)
     fun onPEndChanged(text: String)
+    fun onPStartBarChanged(text: String)
+    fun onPEndBarChanged(text: String)
     fun onTimeChanged(text: String)
 }

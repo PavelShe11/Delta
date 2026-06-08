@@ -1,6 +1,7 @@
 package io.github.pavelshel1.delta.calc
 
 import com.arkivanov.essenty.statekeeper.StateKeeper
+import java.math.BigDecimal
 import com.arkivanov.mvikotlin.core.store.Reducer
 import com.arkivanov.mvikotlin.core.store.Store
 import com.arkivanov.mvikotlin.core.store.StoreFactory
@@ -37,9 +38,11 @@ class CalcStoreFactory(
     private sealed interface Msg {
         data class TStartChanged(val celsius: String, val kelvin: String) : Msg
         data class TEndChanged(val celsius: String, val kelvin: String)   : Msg
-        data class PStartChanged(val text: String) : Msg
-        data class PEndChanged(val text: String)   : Msg
-        data class TimeChanged(val text: String)   : Msg
+        data class PStartChanged(val text: String)    : Msg
+        data class PEndChanged(val text: String)      : Msg
+        data class PStartBarChanged(val text: String) : Msg
+        data class PEndBarChanged(val text: String)   : Msg
+        data class TimeChanged(val text: String)      : Msg
         data class UnitSelected(val fieldKey: FieldKey, val unitIdx: Int) : Msg
         data class EntryLoaded(val entry: CalcEntry) : Msg
         data object RecalcResult : Msg
@@ -79,8 +82,10 @@ class CalcStoreFactory(
                     scheduleRecalc()
                 }
 
-                is CalcStore.Intent.ChangePStart -> { dispatch(Msg.PStartChanged(intent.text)); scheduleRecalc() }
-                is CalcStore.Intent.ChangePEnd   -> { dispatch(Msg.PEndChanged(intent.text));   scheduleRecalc() }
+                is CalcStore.Intent.ChangePStart    -> { dispatch(Msg.PStartChanged(intent.text));    scheduleRecalc() }
+                is CalcStore.Intent.ChangePEnd      -> { dispatch(Msg.PEndChanged(intent.text));      scheduleRecalc() }
+                is CalcStore.Intent.ChangePStartBar -> { dispatch(Msg.PStartBarChanged(intent.text)); scheduleRecalc() }
+                is CalcStore.Intent.ChangePEndBar   -> { dispatch(Msg.PEndBarChanged(intent.text));   scheduleRecalc() }
                 is CalcStore.Intent.ChangeTime   -> { dispatch(Msg.TimeChanged(intent.text));   scheduleRecalc() }
 
                 is CalcStore.Intent.SelectUnit ->
@@ -88,8 +93,25 @@ class CalcStoreFactory(
 
                 is CalcStore.Intent.Save -> scope.launch {
                     val s = state()
-                    s.result ?: return@launch
-                    publish(CalcStore.Label.SavedToHistory)
+                    val result = s.result ?: return@launch
+                    publish(
+                        CalcStore.Label.SavedToHistory(
+                            CalcEntry(
+                                tStartCelsius = s.tStartCelsius?.toPlainString() ?: "",
+                                tStartKelvin  = s.tStartKelvin?.toPlainString()  ?: "",
+                                tStartUnitIdx = s.tStartUnitIdx,
+                                tEndCelsius   = s.tEndCelsius?.toPlainString()   ?: "",
+                                tEndKelvin    = s.tEndKelvin?.toPlainString()    ?: "",
+                                tEndUnitIdx   = s.tEndUnitIdx,
+                                pStart        = s.pStart?.toPlainString()        ?: "",
+                                pEnd          = s.pEnd?.toPlainString()          ?: "",
+                                pStartBar     = s.pStartBar?.toPlainString()     ?: "1",
+                                pEndBar       = s.pEndBar?.toPlainString()       ?: "1",
+                                time          = s.time?.toPlainString()          ?: "",
+                                result        = result.toDouble(),
+                            )
+                        )
+                    )
                 }
 
                 is CalcStore.Intent.LoadEntry ->
@@ -100,10 +122,12 @@ class CalcStoreFactory(
 
     private object ReducerImpl : Reducer<CalcState, Msg> {
         override fun CalcState.reduce(msg: Msg): CalcState = when (msg) {
-            is Msg.TStartChanged -> copy(tStartCelsius = msg.celsius.toBigDecimalOrNull(), tStartKelvin = msg.kelvin.toBigDecimalOrNull())
-            is Msg.TEndChanged   -> copy(tEndCelsius   = msg.celsius.toBigDecimalOrNull(), tEndKelvin   = msg.kelvin.toBigDecimalOrNull())
-            is Msg.PStartChanged -> copy(pStart = msg.text.toBigDecimalOrNull())
-            is Msg.PEndChanged   -> copy(pEnd   = msg.text.toBigDecimalOrNull())
+            is Msg.TStartChanged    -> copy(tStartCelsius = msg.celsius.toBigDecimalOrNull(), tStartKelvin = msg.kelvin.toBigDecimalOrNull())
+            is Msg.TEndChanged      -> copy(tEndCelsius   = msg.celsius.toBigDecimalOrNull(), tEndKelvin   = msg.kelvin.toBigDecimalOrNull())
+            is Msg.PStartChanged    -> copy(pStart    = msg.text.toBigDecimalOrNull())
+            is Msg.PEndChanged      -> copy(pEnd      = msg.text.toBigDecimalOrNull())
+            is Msg.PStartBarChanged -> copy(pStartBar = msg.text.toBigDecimalOrNull())
+            is Msg.PEndBarChanged   -> copy(pEndBar   = msg.text.toBigDecimalOrNull())
             is Msg.TimeChanged   -> copy(time   = msg.text.toBigDecimalOrNull())
 
             is Msg.RecalcResult  -> withResult()
@@ -121,9 +145,11 @@ class CalcStoreFactory(
                 tEndCelsius   = msg.entry.tEndCelsius.toBigDecimalOrNull(),
                 tEndKelvin    = msg.entry.tEndKelvin.toBigDecimalOrNull(),
                 tEndUnitIdx   = msg.entry.tEndUnitIdx,
-                pStart        = msg.entry.pStart.toBigDecimal(),
-                pEnd          = msg.entry.pEnd.toBigDecimal(),
-                time          = msg.entry.time.toBigDecimal(),
+                pStart        = msg.entry.pStart.toBigDecimalOrNull(),
+                pEnd          = msg.entry.pEnd.toBigDecimalOrNull(),
+                pStartBar     = msg.entry.pStartBar.toBigDecimalOrNull() ?: BigDecimal.ONE,
+                pEndBar       = msg.entry.pEndBar.toBigDecimalOrNull()   ?: BigDecimal.ONE,
+                time          = msg.entry.time.toBigDecimalOrNull(),
             ).withResult()
         }
     }

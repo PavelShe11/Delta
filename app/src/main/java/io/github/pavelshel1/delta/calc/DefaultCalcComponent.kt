@@ -80,6 +80,14 @@ class DefaultCalcComponent(
         store.accept(CalcStore.Intent.ChangePEnd(text))
     }
 
+    override fun onPStartBarChanged(text: String) {
+        store.accept(CalcStore.Intent.ChangePStartBar(text))
+    }
+
+    override fun onPEndBarChanged(text: String) {
+        store.accept(CalcStore.Intent.ChangePEndBar(text))
+    }
+
     override fun onTimeChanged(text: String) {
         store.accept(CalcStore.Intent.ChangeTime(text))
     }

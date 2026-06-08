@@ -23,7 +23,7 @@ private const val BLANK_CLR = "#8FA3BA"
 private const val PCT = "﹪"
 
 private const val ABSTRACT_LATEX =
-    """\textcolor{$LAV}{\Delta P}=\dfrac{100}{\textcolor{$TEAL}{t}}\times\!\left[1-\dfrac{\textcolor{$TEAL}{P_{\text{кон}}}\times\textcolor{$TEAL}{T_{\text{нач}}}}{\textcolor{$TEAL}{P_{\text{нач}}}\times\textcolor{$TEAL}{T_{\text{кон}}}}\right]"""
+    """\textcolor{$LAV}{\Delta P}=\dfrac{100}{\textcolor{$TEAL}{t}}\times\!\left[1-\dfrac{(\textcolor{$TEAL}{P_{\text{кон}}}+\textcolor{$TEAL}{P_{\text{б.кон}}})\times\textcolor{$TEAL}{T_{\text{нач}}}}{(\textcolor{$TEAL}{P_{\text{нач}}}+\textcolor{$TEAL}{P_{\text{б.нач}}})\times\textcolor{$TEAL}{T_{\text{кон}}}}\right]"""
 
 // Exposed for LaTeX pre-measurement — not for display
 internal val deltaAbstractLatex: String get() = ABSTRACT_LATEX
@@ -32,12 +32,16 @@ internal fun deltaSubstitutedWithResultLatex(
     t: String,
     pStart: String,
     pEnd: String,
+    pStartBar: String,
+    pEndBar: String,
     tStartK: String,
     tEndK: String,
     result: Double,
 ): String {
-    fun fVal(s: String) = if (s.isNotEmpty()) """\textcolor{$TEAL}{$s}""" else """\textcolor{$BLANK_CLR}{\text{—}}"""
-    val base = """\textcolor{$LAV}{\Delta P}=\dfrac{100}{${fVal(t)}}\times\!\left[1-\dfrac{${fVal(pEnd)}\times ${fVal(tStartK)}}{${fVal(pStart)}\times ${fVal(tEndK)}}\right]"""
+    fun fVal(s: String) = if (s.isNotEmpty()) """\textcolor{$TEAL}{$s}""" else """\textcolor{$BLANK_CLR}{{-\!-}}"""
+    fun fPressure(p: String, bar: String) =
+        """(${fVal(p)}+${fVal(bar)})"""
+    val base = """\textcolor{$LAV}{\Delta P}=\dfrac{100}{${fVal(t)}}\times\!\left[1-\dfrac{${fPressure(pEnd, pEndBar)}\times ${fVal(tStartK)}}{${fPressure(pStart, pStartBar)}\times ${fVal(tEndK)}}\right]"""
     val resultStr = result.toBigDecimal().stripTrailingZeros().toPlainString()
     return """$base\;=\;\textcolor{$TEAL}{$resultStr}\;\text{$PCT/ч}"""
 }
@@ -69,6 +73,8 @@ fun DeltaPFormulaWithValues(
     t: String,
     pStart: String,
     pEnd: String,
+    pStartBar: String,
+    pEndBar: String,
     tStartK: String,
     tEndK: String,
     modifier: Modifier = Modifier,
@@ -79,9 +85,11 @@ fun DeltaPFormulaWithValues(
     fun fVal(s: String) = if (s.isNotEmpty())
         """\textcolor{$TEAL}{$s}"""
     else
-        """\textcolor{$BLANK_CLR}{\text{—}}"""
+        """\textcolor{$BLANK_CLR}{{-\!-}}"""
+    fun fPressure(p: String, bar: String) =
+        """(${fVal(p)}+${fVal(bar)})"""
 
-    val base = """\textcolor{$LAV}{\Delta P}=\dfrac{100}{${fVal(t)}}\times\!\left[1-\dfrac{${fVal(pEnd)}\times ${fVal(tStartK)}}{${fVal(pStart)}\times ${fVal(tEndK)}}\right]"""
+    val base = """\textcolor{$LAV}{\Delta P}=\dfrac{100}{${fVal(t)}}\times\!\left[1-\dfrac{${fPressure(pEnd, pEndBar)}\times ${fVal(tStartK)}}{${fPressure(pStart, pStartBar)}\times ${fVal(tEndK)}}\right]"""
     val latex = if (result != null) {
         val resultStr = result.toBigDecimal().stripTrailingZeros().toPlainString()
         """$base\;=\;\textcolor{$TEAL}{$resultStr}\;\text{$PCT/ч}"""

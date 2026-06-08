@@ -36,9 +36,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.SubdirectoryArrowRight
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,11 +75,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -144,7 +143,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     val focusTStart = remember { FocusRequester() }
     val focusTEnd = remember { FocusRequester() }
     val focusPStart = remember { FocusRequester() }
+    val focusPStartBar = remember { FocusRequester() }
     val focusPEnd = remember { FocusRequester() }
+    val focusPEndBar = remember { FocusRequester() }
     val focusTime = remember { FocusRequester() }
 
     LaunchedEffect(pendingUnitKey, imeVisible) {
@@ -224,7 +225,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                         )
                         HorizontalDivider(color = AppColors.OutlineVar)
-                        ProgressBar(filled = filledCount, total = 5)
+                        ProgressBar(filled = filledCount, total = 7)
                         HorizontalDivider(color = AppColors.OutlineVar)
                     }
                 },
@@ -234,7 +235,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                 ) {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize().hazeSource(state = hazeState),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .hazeSource(state = hazeState),
                         contentPadding = PaddingValues(
                             top = innerPadding.calculateTopPadding(),
                             bottom = innerPadding.calculateBottomPadding() + 12.dp,
@@ -257,10 +260,13 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                     if (imeVisible) pendingUnitKey = FieldKey.TStart
                                     else component.onUnitChipTapped(FieldKey.TStart)
                                 },
-                                kelvinHint = if (state.tStartUnitIdx == 0) state.tStartKelvin.toDisplayString().ifEmpty { null } else null,
+                                kelvinHint = if (state.tStartUnitIdx == 0) state.tStartKelvin.toDisplayString()
+                                    .ifEmpty { null } else null,
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusTEnd.requestFocus() },
-                                modifier = Modifier.animateItem().focusRequester(focusTStart),
+                                modifier = Modifier
+                                    .animateItem()
+                                    .focusRequester(focusTStart),
                             )
                         }
 
@@ -279,10 +285,13 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                     if (imeVisible) pendingUnitKey = FieldKey.TEnd
                                     else component.onUnitChipTapped(FieldKey.TEnd)
                                 },
-                                kelvinHint = if (state.tEndUnitIdx == 0) state.tEndKelvin.toDisplayString().ifEmpty { null } else null,
+                                kelvinHint = if (state.tEndUnitIdx == 0) state.tEndKelvin.toDisplayString()
+                                    .ifEmpty { null } else null,
                                 imeAction = ImeAction.Next,
                                 onImeAction = { focusPStart.requestFocus() },
-                                modifier = Modifier.animateItem().focusRequester(focusTEnd),
+                                modifier = Modifier
+                                    .animateItem()
+                                    .focusRequester(focusTEnd),
                             )
                         }
 
@@ -297,8 +306,28 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 onValueChange = component::onPStartChanged,
                                 onUnitTapped = {},
                                 imeAction = ImeAction.Next,
+                                onImeAction = { focusPStartBar.requestFocus() },
+                                modifier = Modifier
+                                    .animateItem()
+                                    .focusRequester(focusPStart),
+                            )
+                        }
+
+                        item {
+                            Spacer(Modifier.height(10.dp))
+                            InputCard(
+                                varMain = "P", varSub = "б.нач",
+                                description = "давление барометрическое в начале",
+                                value = state.pStartBar.toDisplayString(),
+                                unitLabel = "бар",
+                                hasUnitDropdown = false,
+                                onValueChange = component::onPStartBarChanged,
+                                onUnitTapped = {},
+                                imeAction = ImeAction.Next,
                                 onImeAction = { focusPEnd.requestFocus() },
-                                modifier = Modifier.animateItem().focusRequester(focusPStart),
+                                modifier = Modifier
+                                    .animateItem()
+                                    .focusRequester(focusPStartBar),
                             )
                         }
 
@@ -313,8 +342,28 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 onValueChange = component::onPEndChanged,
                                 onUnitTapped = {},
                                 imeAction = ImeAction.Next,
+                                onImeAction = { focusPEndBar.requestFocus() },
+                                modifier = Modifier
+                                    .animateItem()
+                                    .focusRequester(focusPEnd),
+                            )
+                        }
+
+                        item {
+                            Spacer(Modifier.height(10.dp))
+                            InputCard(
+                                varMain = "P", varSub = "б.кон",
+                                description = "давление барометрическое в конце",
+                                value = state.pEndBar.toDisplayString(),
+                                unitLabel = "бар",
+                                hasUnitDropdown = false,
+                                onValueChange = component::onPEndBarChanged,
+                                onUnitTapped = {},
+                                imeAction = ImeAction.Next,
                                 onImeAction = { focusTime.requestFocus() },
-                                modifier = Modifier.animateItem().focusRequester(focusPEnd),
+                                modifier = Modifier
+                                    .animateItem()
+                                    .focusRequester(focusPEndBar),
                             )
                         }
 
@@ -331,7 +380,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 onUnitTapped = {},
                                 imeAction = ImeAction.Done,
                                 onImeAction = { focusManager.clearFocus() },
-                                modifier = Modifier.animateItem().focusRequester(focusTime),
+                                modifier = Modifier
+                                    .animateItem()
+                                    .focusRequester(focusTime),
                             )
                         }
 
@@ -347,7 +398,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                         result = lastResult.value?.toDouble() ?: 0.0,
                                         justSaved = justSaved,
                                         onSave = {
-                                            component.onSaveRequested(lastResult.value?.toDouble() ?: 0.0)
+                                            component.onSaveRequested(
+                                                lastResult.value?.toDouble() ?: 0.0
+                                            )
                                             justSaved = true
                                         },
                                     )
@@ -488,7 +541,10 @@ private fun InputCard(
             fontWeight = if (value.isNotEmpty()) FontWeight.Normal else FontWeight.Light,
             color = if (value.isNotEmpty()) AppColors.OnSurface else AppColors.Outline,
         ),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = imeAction),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Decimal,
+            imeAction = imeAction
+        ),
         keyboardActions = KeyboardActions(onAny = { onImeAction() }),
         singleLine = true,
         cursorBrush = SolidColor(AppColors.Primary),
@@ -775,30 +831,12 @@ private fun ResultBlock(
                     onClick = onSave,
                     modifier = Modifier.size(28.dp),
                 ) {
-                    Canvas(modifier = Modifier.size(20.dp)) {
-                        val s = size.width / 24f
-                        if (justSaved) {
-                            val sw = 2.5f * s
-                            drawLine(AppColors.Primary, Offset(5f * s, 13f * s), Offset(9f * s, 17f * s), sw, StrokeCap.Round)
-                            drawLine(AppColors.Primary, Offset(9f * s, 17f * s), Offset(19f * s, 7f * s), sw, StrokeCap.Round)
-                        } else {
-                            val path = Path().apply {
-                                moveTo(19f * s, 21f * s)
-                                lineTo(12f * s, 16f * s)
-                                lineTo(5f * s, 21f * s)
-                                lineTo(5f * s, 5f * s)
-                                lineTo(7f * s, 3f * s)
-                                lineTo(17f * s, 3f * s)
-                                lineTo(19f * s, 5f * s)
-                                close()
-                            }
-                            drawPath(
-                                path = path,
-                                color = AppColors.Primary.copy(alpha = 0.55f),
-                                style = Stroke(width = 2f * s, cap = StrokeCap.Round, join = StrokeJoin.Round),
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = if (justSaved) Icons.Default.Check else Icons.Outlined.BookmarkBorder,
+                        contentDescription = if (justSaved) "Сохранено" else "Сохранить",
+                        tint = if (justSaved) AppColors.Primary else AppColors.Primary.copy(alpha = 0.55f),
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
         }
@@ -828,9 +866,27 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
                     val sw = 2f / 24f * size.width
                     fun x(v: Float) = v / 24f * size.width
                     fun y(v: Float) = v / 24f * size.height
-                    drawLine(AppColors.OnSurfaceVar, Offset(x(4f), y(7f)),  Offset(x(20f), y(7f)),  strokeWidth = sw, cap = StrokeCap.Round)
-                    drawLine(AppColors.OnSurfaceVar, Offset(x(4f), y(12f)), Offset(x(14f), y(12f)), strokeWidth = sw, cap = StrokeCap.Round)
-                    drawLine(AppColors.OnSurfaceVar, Offset(x(4f), y(17f)), Offset(x(17f), y(17f)), strokeWidth = sw, cap = StrokeCap.Round)
+                    drawLine(
+                        AppColors.OnSurfaceVar,
+                        Offset(x(4f), y(7f)),
+                        Offset(x(20f), y(7f)),
+                        strokeWidth = sw,
+                        cap = StrokeCap.Round
+                    )
+                    drawLine(
+                        AppColors.OnSurfaceVar,
+                        Offset(x(4f), y(12f)),
+                        Offset(x(14f), y(12f)),
+                        strokeWidth = sw,
+                        cap = StrokeCap.Round
+                    )
+                    drawLine(
+                        AppColors.OnSurfaceVar,
+                        Offset(x(4f), y(17f)),
+                        Offset(x(17f), y(17f)),
+                        strokeWidth = sw,
+                        cap = StrokeCap.Round
+                    )
                 }
                 Text(
                     text = "ФОРМУЛА РАСЧЁТА",
@@ -884,6 +940,8 @@ private fun FormulaCard(state: CalcState, modifier: Modifier = Modifier) {
                 t = state.time.toDisplayString(),
                 pStart = state.pStart.toDisplayString(),
                 pEnd = state.pEnd.toDisplayString(),
+                pStartBar = state.pStartBar.toDisplayString(),
+                pEndBar = state.pEndBar.toDisplayString(),
                 tStartK = state.tStartKelvin.toDisplayString(),
                 tEndK = state.tEndKelvin.toDisplayString(),
             )

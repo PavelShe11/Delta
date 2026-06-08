@@ -124,6 +124,8 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                 entry.t,
                 entry.pStart,
                 entry.pEnd,
+                entry.pStartBar,
+                entry.pEndBar,
                 entry.tStartK,
                 entry.tEndK,
                 entry.result
