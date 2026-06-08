@@ -52,9 +52,3 @@ $$\Delta P = \frac{100}{t} \times \left[1 - \frac{(P_\text{кон} + P_\text{б.
 ## Требования
 
 - Android 6.0 (API 23) и выше
-
-## Сборка
-
-```bash
-./gradlew assembleDebug
-```
