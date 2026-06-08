@@ -5,11 +5,12 @@ import com.arkivanov.decompose.ComponentContext
 class DefaultUnitSheetComponent(
     componentContext: ComponentContext,
     override val fieldKey: FieldKey,
-    override val currentIdx: Int,
-    private val onSelectAction: (Int) -> Unit,
+    override val units: List<String>,
+    override val currentUnit: String,
+    private val onSelectAction: (String) -> Unit,
     private val onDismissAction: () -> Unit,
 ) : UnitSheetComponent, ComponentContext by componentContext {
 
-    override fun onSelect(idx: Int) = onSelectAction(idx)
+    override fun onSelect(unit: String) = onSelectAction(unit)
     override fun onDismiss() = onDismissAction()
 }

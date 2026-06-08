@@ -107,7 +107,6 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import kotlin.time.Duration.Companion.milliseconds
 
-private val TEMP_UNIT_LABELS = listOf("°C", "К")
 
 private val LocalHazeState = compositionLocalOf { HazeState() }
 
@@ -252,7 +251,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varSub = "нач",
                                 description = "температура в начале",
                                 value = state.tStartText.toDisplayString(),
-                                unitLabel = TEMP_UNIT_LABELS[state.tStartUnitIdx],
+                                unitLabel = FieldKey.TStart.units[state.tStartUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTStartChanged,
                                 onUnitTapped = {
@@ -277,7 +276,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 varSub = "кон",
                                 description = "температура в конце",
                                 value = state.tEndText.toDisplayString(),
-                                unitLabel = TEMP_UNIT_LABELS[state.tEndUnitIdx],
+                                unitLabel = FieldKey.TEnd.units[state.tEndUnitIdx],
                                 hasUnitDropdown = true,
                                 onValueChange = component::onTEndChanged,
                                 onUnitTapped = {

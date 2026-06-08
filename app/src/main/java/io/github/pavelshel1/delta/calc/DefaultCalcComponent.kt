@@ -43,20 +43,22 @@ class DefaultCalcComponent(
         serializer = null,
         handleBackButton = false,
         childFactory = { fieldKey, ctx ->
-            val currentIdx = when (fieldKey) {
+            val unitIdx = when (fieldKey) {
                 FieldKey.TStart -> store.state.tStartUnitIdx
-                FieldKey.TEnd -> store.state.tEndUnitIdx
-                else -> 0
+                FieldKey.TEnd   -> store.state.tEndUnitIdx
+                else            -> 0
             }
             DefaultUnitSheetComponent(
                 componentContext = ctx,
-                fieldKey = fieldKey,
-                currentIdx = currentIdx,
-                onSelectAction = { idx ->
+                fieldKey         = fieldKey,
+                units            = fieldKey.units,
+                currentUnit      = fieldKey.units[unitIdx],
+                onSelectAction   = { unit ->
+                    val idx = fieldKey.units.indexOf(unit)
                     store.accept(CalcStore.Intent.SelectUnit(fieldKey, idx))
                     sheetNavigation.dismiss()
                 },
-                onDismissAction = { sheetNavigation.dismiss() },
+                onDismissAction  = { sheetNavigation.dismiss() },
             )
         },
     )

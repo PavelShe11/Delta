@@ -29,30 +29,11 @@ import androidx.compose.ui.unit.sp
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
-private fun FieldKey.unitLabels(): List<String> = when (this) {
-    FieldKey.TStart, FieldKey.TEnd -> listOf("°C", "К")
-    FieldKey.PStart, FieldKey.PEnd -> listOf("МПа", "кПа", "бар", "атм")
-    FieldKey.Time                  -> listOf("ч", "мин", "с")
-}
-
-private fun FieldKey.varMain(): String = when (this) {
-    FieldKey.TStart, FieldKey.TEnd -> "T"
-    FieldKey.PStart, FieldKey.PEnd -> "P"
-    FieldKey.Time                  -> "t"
-}
-
-private fun FieldKey.varSub(): String? = when (this) {
-    FieldKey.TStart, FieldKey.PStart -> "нач"
-    FieldKey.TEnd, FieldKey.PEnd     -> "кон"
-    FieldKey.Time                    -> null
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnitSheetContent(component: UnitSheetComponent) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    val labels = component.fieldKey.unitLabels()
 
     fun hideAndThen(action: () -> Unit) {
         scope.launch { sheetState.hide() }.invokeOnCompletion { action() }
@@ -75,8 +56,8 @@ fun UnitSheetContent(component: UnitSheetComponent) {
             )
             Spacer(modifier = Modifier.padding(start = 8.dp))
             UnitSheetVarChip(
-                main = component.fieldKey.varMain(),
-                sub = component.fieldKey.varSub(),
+                main = component.fieldKey.varMain,
+                sub  = component.fieldKey.varSub,
             )
         }
 
@@ -85,18 +66,18 @@ fun UnitSheetContent(component: UnitSheetComponent) {
             color = AppColors.OutlineVar,
         )
 
-        labels.forEachIndexed { idx, label ->
-            val selected = idx == component.currentIdx
+        component.units.forEach { unit ->
+            val selected = unit == component.currentUnit
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { hideAndThen { component.onSelect(idx) } }
+                    .clickable { hideAndThen { component.onSelect(unit) } }
                     .background(if (selected) AppColors.Primary.copy(alpha = 0.08f) else androidx.compose.ui.graphics.Color.Transparent)
                     .padding(horizontal = 24.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = label,
+                    text = unit,
                     fontSize = 20.sp,
                     fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                     color = if (selected) AppColors.Primary else AppColors.OnSurface,

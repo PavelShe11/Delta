@@ -66,8 +66,6 @@ internal fun CalcState.computeResult(): BigDecimal? {
 
 internal fun CalcState.withResult(): CalcState = copy(result = computeResult())
 
-// ── StateKeeper snapshot (BigDecimal → String для сериализации) ───────────
-
 @Serializable
 data class CalcStateSnapshot(
     val tStartCelsius: String? = null,
