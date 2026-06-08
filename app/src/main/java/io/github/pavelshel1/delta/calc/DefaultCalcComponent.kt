@@ -21,7 +21,7 @@ class DefaultCalcComponent(
     componentContext: ComponentContext,
     storeFactory: StoreFactory = DefaultStoreFactory(),
     private val onHistory: () -> Unit,
-    private val onSave: (Double) -> Unit = {},
+    private val onSaveEntry: (CalcEntry) -> Unit = {},
 ) : CalcComponent, ComponentContext by componentContext {
 
     private val store: CalcStore = instanceKeeper.getStore {
@@ -34,6 +34,11 @@ class DefaultCalcComponent(
     init {
         store.states(observer(onNext = { _state.value = it }))
             .also { disposable -> lifecycle.doOnDestroy(disposable::dispose) }
+        store.labels(observer(onNext = { label ->
+            when (label) {
+                is CalcStore.Label.SavedToHistory -> onSaveEntry(label.entry)
+            }
+        })).also { disposable -> lifecycle.doOnDestroy(disposable::dispose) }
     }
 
     private val sheetNavigation = SlotNavigation<FieldKey>()
@@ -64,7 +69,7 @@ class DefaultCalcComponent(
     )
 
     override fun onHistoryRequested() = onHistory()
-    override fun onSaveRequested(result: Double) = onSave(result)
+    override fun onSaveRequested(result: Double) = store.accept(CalcStore.Intent.Save)
     override fun onUnitChipTapped(fieldKey: FieldKey) = sheetNavigation.activate(fieldKey)
     override fun onTStartChanged(text: String) {
         store.accept(CalcStore.Intent.ChangeTStart(text))

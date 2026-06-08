@@ -1,0 +1,28 @@
+CREATE TABLE HistoryEntry (
+    id          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    t           TEXT    NOT NULL,
+    pStart      TEXT    NOT NULL,
+    pEnd        TEXT    NOT NULL,
+    pStartBar   TEXT    NOT NULL,
+    pEndBar     TEXT    NOT NULL,
+    tStartK     TEXT    NOT NULL,
+    tEndK       TEXT    NOT NULL,
+    result      REAL    NOT NULL,
+    timestampMs INTEGER NOT NULL
+);
+
+selectAll:
+SELECT * FROM HistoryEntry ORDER BY timestampMs DESC;
+
+insert:
+INSERT INTO HistoryEntry (t, pStart, pEnd, pStartBar, pEndBar, tStartK, tEndK, result, timestampMs)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM HistoryEntry WHERE id = ?;
+
+deleteAll:
+DELETE FROM HistoryEntry;
+
+count:
+SELECT COUNT(*) FROM HistoryEntry;

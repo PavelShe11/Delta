@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.sqldelight)
     id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
 }
@@ -65,8 +66,19 @@ dependencies {
     implementation(libs.latex.renderer)
     implementation(libs.haze)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation(libs.sqldelight.android.driver)
+    implementation(libs.sqldelight.coroutines)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+    testImplementation("app.cash.sqldelight:sqlite-driver:2.3.2")
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+sqldelight {
+    databases {
+        create("DeltaDatabase") {
+            packageName.set("io.github.pavelshel1.delta.db")
+        }
+    }
 }

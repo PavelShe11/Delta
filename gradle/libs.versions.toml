@@ -1,10 +1,11 @@
 [versions]
 agp = "9.2.1"
+sqldelight = "2.3.2"
 coreKtx = "1.10.1"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 kotlin = "2.4.0"
-composeBom = "2026.02.01"
+composeBom = "2026.05.01"
 essenty = "2.5.0"
 decompose = "3.5.0"
 mvikotlin = "4.4.0"
@@ -36,8 +37,11 @@ latex-base     = { module = "io.github.huarangmeng:latex-base",     version.ref 
 latex-parser   = { module = "io.github.huarangmeng:latex-parser",   version.ref = "latex" }
 latex-renderer = { module = "io.github.huarangmeng:latex-renderer", version.ref = "latex" }
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
+sqldelight-android-driver = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
+sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 

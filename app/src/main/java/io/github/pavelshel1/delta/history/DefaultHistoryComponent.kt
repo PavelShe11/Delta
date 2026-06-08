@@ -1,46 +1,31 @@
 package io.github.pavelshel1.delta.history
 
 import com.arkivanov.decompose.ComponentContext
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlin.collections.buildList
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class DefaultHistoryComponent(
     componentContext: ComponentContext,
+    private val repository: HistoryRepository,
     private val onDismissAction: () -> Unit,
 ) : HistoryComponent, ComponentContext by componentContext {
 
-    private val _entries = MutableStateFlow(
-        buildList {
-            repeat(100) {
-                add(
-                    HistoryEntry(
-                        id = it.toLong(),
-                        t = "4",
-                        pStart = "1",
-                        pEnd = "1",
-                        pStartBar = "1",
-                        pEndBar = "1",
-                        tStartK = "293",
-                        tEndK = "298",
-                        result = 0.167,
-                        timestampMs = System.currentTimeMillis(),
-                    )
-                )
-            }
-        }
-    )
+    private val scope = coroutineScope(Dispatchers.Main.immediate)
 
-    override val entries: StateFlow<List<HistoryEntry>> = _entries
+    override val entries: StateFlow<List<HistoryEntry>> =
+        repository.entries().stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     override fun onDismiss() = onDismissAction()
 
     override fun onDelete(id: Long) {
-        _entries.update { list -> list.filter { it.id != id } }
+        scope.launch(Dispatchers.IO) { repository.deleteById(id) }
     }
 
     override fun onClear() {
-        _entries.update { emptyList() }
+        scope.launch(Dispatchers.IO) { repository.deleteAll() }
     }
 }
