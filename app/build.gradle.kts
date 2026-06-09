@@ -112,6 +112,11 @@ rustorePublish {
             credentialsPath = System.getenv("RUSTORE_CREDENTIALS_PATH") ?: ""
             buildFormat = ru.cian.rustore.publish.BuildFormat.AAB
             publishType = ru.cian.rustore.publish.PublishType.MANUAL
+            developerContacts = ru.cian.rustore.publish.DeveloperContacts(
+                email = "161poqlbi22pzm@mail.ru",
+                website = null,
+                vkCommunity = null,
+            )
         }
     }
 }
