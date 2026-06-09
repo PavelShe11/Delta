@@ -94,7 +94,7 @@ class CalcStoreFactory(
 
                 is CalcStore.Intent.Save -> scope.launch {
                     val s = state()
-                    val result = s.result ?: return@launch
+                    val result = s.computeResult() ?: return@launch
                     publish(
                         CalcStore.Label.SavedToHistory(
                             CalcEntry(
