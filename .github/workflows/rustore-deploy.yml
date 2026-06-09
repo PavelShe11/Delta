@@ -90,11 +90,4 @@ jobs:
         env:
           RUSTORE_TOKEN: ${{ steps.rustore_auth.outputs.token }}
           VERSION_ID: ${{ steps.create_draft.outputs.version_id }}
-        run: |
-          AAB_PATH=$(find app/build/outputs/bundle/release -name "*.aab" | head -1)
-          echo "Uploading: $AAB_PATH"
-          curl --fail --show-error --location \
-            --request POST \
-            "https://public-api.rustore.ru/public/v1/application/io.github.pavelshel1.delta/version/${VERSION_ID}/aab" \
-            --header "Public-Token: ${RUSTORE_TOKEN}" \
-            --form "file=@${AAB_PATH}"
+        run: python3 .github/scripts/rustore_upload_aab.py
