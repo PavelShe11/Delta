@@ -2,8 +2,6 @@ name: Deploy to RuStore
 
 on:
   push:
-    branches:
-      - master
     tags:
       - 'release/**'
       - 'release-rustore/**'
