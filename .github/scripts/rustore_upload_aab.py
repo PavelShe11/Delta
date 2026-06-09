@@ -64,3 +64,13 @@ print(f"Response body: {body}")
 
 if resp.status >= 400:
     sys.exit(1)
+
+conn2 = http.client.HTTPSConnection('public-api.rustore.ru', timeout=30)
+conn2.request(
+    'GET',
+    f'/public/v1/application/{package}/version/{version_id}',
+    headers={'Public-Token': token}
+)
+resp2 = conn2.getresponse()
+print(f"\nVersion state after upload:")
+print(resp2.read().decode('utf-8', errors='replace'))
