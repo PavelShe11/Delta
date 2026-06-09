@@ -1,49 +1,35 @@
-import json, os, urllib.request, urllib.error
+import json, os, re, urllib.request, urllib.error
 
 token = os.environ['RUSTORE_TOKEN']
 package = 'io.github.pavelshel1.delta'
 
-# Ищем существующий черновик
-req_list = urllib.request.Request(
+payload = json.dumps({'publishType': 'MANUAL'}).encode('utf-8')
+
+req = urllib.request.Request(
     f'https://public-api.rustore.ru/public/v1/application/{package}/version',
-    headers={'Public-Token': token},
-    method='GET'
+    data=payload,
+    headers={
+        'Public-Token': token,
+        'Content-Type': 'application/json'
+    },
+    method='POST'
 )
 
 version_id = None
 try:
-    with urllib.request.urlopen(req_list) as resp:
+    with urllib.request.urlopen(req) as resp:
         result = json.loads(resp.read())
-        versions = result.get('body', {}).get('content', [])
-        for v in versions:
-            if v.get('appVersionStatus') == 'DRAFT':
-                version_id = v['versionId']
-                print(f"Found existing draft: {version_id}")
-                break
+        print(f"Create draft response: {result.get('code')}")
+        version_id = result['body']
+        print(f"Created new draft: {version_id}")
 except urllib.error.HTTPError as e:
-    print(f"GET versions error {e.code}: {e.read().decode()}")
-    raise
-
-# Если черновика нет — создаём
-if version_id is None:
-    payload = json.dumps({'publishType': 'MANUAL'}).encode('utf-8')
-    req_post = urllib.request.Request(
-        f'https://public-api.rustore.ru/public/v1/application/{package}/version',
-        data=payload,
-        headers={
-            'Public-Token': token,
-            'Content-Type': 'application/json'
-        },
-        method='POST'
-    )
-    try:
-        with urllib.request.urlopen(req_post) as resp:
-            result = json.loads(resp.read())
-            print(f"Create draft response: {result.get('code')}")
-            version_id = result['body']
-            print(f"Created new draft: {version_id}")
-    except urllib.error.HTTPError as e:
-        print(f"POST error {e.code}: {e.read().decode()}")
+    body = e.read().decode()
+    print(f"HTTP Error {e.code}: {body}")
+    match = re.search(r'draft version with ID = (\d+)', body)
+    if e.code == 400 and match:
+        version_id = int(match.group(1))
+        print(f"Reusing existing draft: {version_id}")
+    else:
         raise
 
 print(f"Using version ID: {version_id}")
