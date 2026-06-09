@@ -1,5 +1,6 @@
 [versions]
 agp = "9.2.1"
+rustore-publish = "0.5.5"
 sqldelight = "2.3.2"
 coreKtx = "1.10.1"
 lifecycleRuntimeKtx = "2.10.0"
@@ -44,4 +45,5 @@ sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-exte
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+rustore-publish = { id = "ru.cian.rustore-publish-gradle-plugin", version.ref = "rustore-publish" }
 

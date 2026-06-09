@@ -51,14 +51,20 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release.jks"
 
-      - name: Build signed release AAB
+      - name: Create RuStore credentials file
+        run: |
+          echo "{\"key_id\":\"${{ secrets.RUSTORE_KEY_ID }}\",\"client_secret\":\"${{ secrets.RUSTORE_PRIVATE_KEY }}\"}" \
+            > "$RUNNER_TEMP/rustore-credentials.json"
+
+      - name: Build and publish to RuStore
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          RUSTORE_CREDENTIALS_PATH: ${{ runner.temp }}/rustore-credentials.json
         run: |
-          ./gradlew bundleRelease \
+          ./gradlew bundleRelease publishRustoreRelease \
             -PversionCode=${{ steps.version_code.outputs.code }} \
             -PversionName=${{ steps.version.outputs.name }}
 
@@ -69,25 +75,3 @@ jobs:
           name: release-aab-${{ steps.version.outputs.name }}-${{ steps.version_code.outputs.code }}
           path: app/build/outputs/bundle/release/*.aab
           retention-days: 14
-
-      - name: Install Python cryptography
-        run: pip install cryptography
-
-      - name: Authenticate with RuStore API
-        id: rustore_auth
-        env:
-          RUSTORE_KEY_ID: ${{ secrets.RUSTORE_KEY_ID }}
-          RUSTORE_PRIVATE_KEY: ${{ secrets.RUSTORE_PRIVATE_KEY }}
-        run: python3 .github/scripts/rustore_auth.py
-
-      - name: Create draft version in RuStore
-        id: create_draft
-        env:
-          RUSTORE_TOKEN: ${{ steps.rustore_auth.outputs.token }}
-        run: python3 .github/scripts/rustore_create_draft.py
-
-      - name: Upload AAB to RuStore
-        env:
-          RUSTORE_TOKEN: ${{ steps.rustore_auth.outputs.token }}
-          VERSION_ID: ${{ steps.create_draft.outputs.version_id }}
-        run: python3 .github/scripts/rustore_upload_aab.py

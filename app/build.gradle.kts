@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.rustore.publish)
     id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
 }
@@ -101,6 +102,16 @@ sqldelight {
     databases {
         create("DeltaDatabase") {
             packageName.set("io.github.pavelshel1.delta.db")
+        }
+    }
+}
+
+rustorePublish {
+    instances {
+        create("release") {
+            credentialsPath = System.getenv("RUSTORE_CREDENTIALS_PATH") ?: ""
+            buildFormat = ru.cian.rustore.publish.BuildFormat.AAB
+            publishType = ru.cian.rustore.publish.PublishType.MANUAL
         }
     }
 }
