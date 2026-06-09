@@ -27,5 +27,14 @@ try:
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
             f.write(f'version_id={version_id}\n')
 except urllib.error.HTTPError as e:
-    print(f"HTTP Error {e.code}: {e.read().decode()}")
-    raise
+    body = e.read().decode()
+    print(f"HTTP Error {e.code}: {body}")
+    import re
+    match = re.search(r'draft version with ID = (\d+)', body)
+    if match:
+        version_id = int(match.group(1))
+        print(f"Reusing existing draft version ID: {version_id}")
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f'version_id={version_id}\n')
+    else:
+        raise
