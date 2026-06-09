@@ -22,8 +22,7 @@ try:
     with urllib.request.urlopen(req) as resp:
         result = json.loads(resp.read())
         print(f"Create draft response: {result.get('code')}")
-        body = result.get('body', result)
-        version_id = body['versionId']
+        version_id = result['body']
         print(f"Draft version ID: {version_id}")
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
             f.write(f'version_id={version_id}\n')
