@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'release/**'
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  increment:
+    name: Increment versionCode
+    runs-on: ubuntu-latest
+    outputs:
+      version_code: ${{ steps.inc.outputs.code }}
+    steps:
+      - name: Increment versionCode
+        id: inc
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          CURRENT_CODE=${{ vars.VERSION_CODE }}
+          NEW_CODE=$((CURRENT_CODE + 1))
+          gh api repos/${{ github.repository }}/actions/variables/VERSION_CODE \
+            -X PATCH \
+            -f value="$NEW_CODE"
+          echo "code=$NEW_CODE" >> "$GITHUB_OUTPUT"
+          echo "versionCode: $CURRENT_CODE → $NEW_CODE"
+
+  github-release:
+    needs: increment
+    uses: ./.github/workflows/github-release.yml
+    with:
+      version_code: ${{ needs.increment.outputs.version_code }}
+    secrets: inherit
+
+  rustore-deploy:
+    needs: increment
+    uses: ./.github/workflows/rustore-deploy.yml
+    with:
+      version_code: ${{ needs.increment.outputs.version_code }}
+    secrets: inherit
