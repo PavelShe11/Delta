@@ -97,6 +97,7 @@ import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -195,7 +196,11 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                     Column(
                         modifier = Modifier.hazeEffect(
                             state = hazeState,
-                            style = HazeDefaults.style(backgroundColor = AppColors.Background)
+                            style = HazeStyle(
+                                backgroundColor = AppColors.Background,
+                                tint = HazeDefaults.tint(AppColors.Background),
+                                fallbackTint = HazeTint(AppColors.Background),
+                            )
                         )
                     ) {
                         TopAppBar(
@@ -801,7 +806,7 @@ private fun ResultBlock(
                 .then(
                     if (hazeState != null) Modifier.hazeEffect(
                         state = hazeState,
-                        style = HazeDefaults.style(
+                        style = HazeStyle(
                             backgroundColor = AppColors.ResultGradientStart,
                             tint = HazeTint(
                                 Brush.linearGradient(
@@ -811,7 +816,12 @@ private fun ResultBlock(
                                     )
                                 ),
                                 blendMode = BlendMode.SrcOver
-                            )
+                            ),
+                            fallbackTint = HazeTint(
+                                Brush.linearGradient(
+                                    listOf(AppColors.ResultGradientStart, AppColors.ResultGradientEnd)
+                                )
+                            ),
                         )
                     ) else Modifier.background(
                         Brush.linearGradient(

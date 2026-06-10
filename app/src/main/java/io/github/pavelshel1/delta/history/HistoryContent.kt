@@ -57,6 +57,8 @@ import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.latex.renderer.model.LatexTheme
 import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -255,7 +257,11 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .hazeEffect(
                     state = hazeState,
-                    style = HazeDefaults.style(backgroundColor = AppColors.Background),
+                    style = HazeStyle(
+                        backgroundColor = AppColors.Background,
+                        tint = HazeDefaults.tint(AppColors.Background),
+                        fallbackTint = HazeTint(AppColors.Background),
+                    ),
                 )
                 .onSizeChanged { toolbarHeightPx = it.height }
         ) {
