@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.sqldelight)
     id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
+    alias(libs.plugins.tracer)
 }
 
 android {
@@ -61,10 +62,41 @@ android {
 
     buildFeatures {
         compose = true
+        resValues = true
+    }
+}
+
+tracer {
+    create("defaultConfig") {
+        pluginToken = System.getenv("TRACER_PLUGIN_TOKEN") ?: ""
+        appToken = System.getenv("TRACER_APP_TOKEN") ?: ""
+
+        uploadMapping = true
+        uploadNativeSymbols = true
+        uploadRetryCount = 2
+        additionalLibrariesPath = projectDir.toString() + "/aVeryNonstandardLibsDirectory"
+    }
+
+    create("debug") {
+        isDisabled = true
     }
 }
 
 dependencies {
+    implementation(platform(libs.tracer.platform))
+    // Сбор и анализ крешей и ANR
+    implementation(libs.tracer.crash.report)
+    // Сбор и анализ нативных крешей
+    implementation(libs.tracer.crash.report.native)
+    // Сбор и анализ хипдапмов при OOM
+    implementation(libs.tracer.heap.dumps)
+    // Анализ потребления дискового места на устройстве
+    implementation(libs.tracer.disk.usage)
+    // Семплирующий профайлер
+    implementation(libs.tracer.profiler.sampling)
+    // Систрейс
+    implementation(libs.tracer.profiler.systrace)
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
