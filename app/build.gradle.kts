@@ -89,7 +89,6 @@ tracer {
         uploadMapping = true
         uploadNativeSymbols = true
         uploadRetryCount = 2
-        additionalLibrariesPath = projectDir.toString() + "/aVeryNonstandardLibsDirectory"
     }
 
     create("debug") {
