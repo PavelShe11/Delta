@@ -53,13 +53,14 @@ AAB_PATH=$(find app/build/outputs/bundle/release -name "*.aab" | head -1)
 [[ -n "$AAB_PATH" ]] || { echo "ERROR: AAB file not found" >&2; exit 1; }
 echo "File: $AAB_PATH ($(du -h "$AAB_PATH" | cut -f1))"
 
-UPLOAD_RESP=$(curl -sf \
+HTTP_CODE=$(curl -s -o /tmp/rs_upload.json -w "%{http_code}" \
   -X POST "$BASE_URL/public/v1/application/$PACKAGE/version/$VERSION_ID/aab" \
   -H "Public-Token: $TOKEN" \
   -F "file=@$AAB_PATH")
+UPLOAD_RESP=$(cat /tmp/rs_upload.json)
 
-[[ "$(echo "$UPLOAD_RESP" | jq -r '.code')" == "OK" ]] || { echo "Upload failed: $UPLOAD_RESP" >&2; exit 1; }
-echo "Upload OK"
+echo "Upload HTTP $HTTP_CODE: $UPLOAD_RESP"
+[[ "$(echo "$UPLOAD_RESP" | jq -r '.code')" == "OK" ]] || { echo "Upload failed" >&2; exit 1; }
 
 # ── 4. Submit for moderation ──────────────────────────────────────────────────
 echo "==> Submitting for moderation..."
