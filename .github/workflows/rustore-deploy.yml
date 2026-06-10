@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - name: Extract version name from tag
         id: version
@@ -73,8 +75,10 @@ jobs:
       - name: Extract tag message
         id: tag_msg
         run: |
-          MSG=$(git tag -l --format='%(contents)' "${GITHUB_REF#refs/tags/}")
+          TAG="${GITHUB_REF#refs/tags/}"
+          MSG=$(git for-each-ref --format='%(contents:subject)' "refs/tags/$TAG")
           echo "whats_new=$MSG" >> "$GITHUB_OUTPUT"
+          echo "whats_new: $MSG"
 
       - name: Deploy to RuStore
         env:
