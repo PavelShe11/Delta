@@ -65,9 +65,11 @@ echo "Upload HTTP $HTTP_CODE: $UPLOAD_RESP"
 # ── 4. Submit for moderation ──────────────────────────────────────────────────
 echo "==> Submitting for moderation..."
 
-COMMIT_RESP=$(curl -sf \
+HTTP_CODE=$(curl -s -o /tmp/rs_commit.json -w "%{http_code}" \
   -X POST "$BASE_URL/public/v1/application/$PACKAGE/version/$VERSION_ID/commit" \
   -H "Public-Token: $TOKEN")
+COMMIT_RESP=$(cat /tmp/rs_commit.json)
 
-[[ "$(echo "$COMMIT_RESP" | jq -r '.code')" == "OK" ]] || { echo "Submit failed: $COMMIT_RESP" >&2; exit 1; }
+echo "Commit HTTP $HTTP_CODE: $COMMIT_RESP"
+[[ "$(echo "$COMMIT_RESP" | jq -r '.code')" == "OK" ]] || { echo "Submit failed" >&2; exit 1; }
 echo "Done. Version $VERSION_ID submitted for moderation."
