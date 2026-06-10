@@ -76,7 +76,11 @@ jobs:
         id: tag_msg
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          MSG=$(git for-each-ref --format='%(contents:subject)' "refs/tags/$TAG")
+          if [[ "$(git cat-file -t "refs/tags/$TAG")" == "tag" ]]; then
+            MSG=$(git cat-file tag "refs/tags/$TAG" | sed '1,/^$/d' | head -1)
+          else
+            MSG=""
+          fi
           echo "whats_new=$MSG" >> "$GITHUB_OUTPUT"
           echo "whats_new: $MSG"
 
