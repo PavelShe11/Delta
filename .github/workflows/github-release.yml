@@ -61,12 +61,27 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release.jks"
 
+      - name: Fetch repo metadata
+        id: repo_meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DESCRIPTION=$(gh api repos/${{ github.repository }} --jq '.description // ""')
+          LICENSE=$(gh api repos/${{ github.repository }} --jq '.license.spdx_id // ""')
+          echo "description=$DESCRIPTION" >> "$GITHUB_OUTPUT"
+          echo "license=$LICENSE"         >> "$GITHUB_OUTPUT"
+
       - name: Build signed release APKs
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          APP_DESCRIPTION:    ${{ steps.repo_meta.outputs.description }}
+          GITHUB_REPO_URL:    ${{ github.server_url }}/${{ github.repository }}
+          GITHUB_PROFILE_URL: ${{ github.server_url }}/${{ github.repository_owner }}
+          AUTHOR:             ${{ github.repository_owner }}
+          LICENSE:            ${{ steps.repo_meta.outputs.license }}
         run: |
           ./gradlew assembleRelease \
             -PversionCode=${{ steps.version_code.outputs.code }} \

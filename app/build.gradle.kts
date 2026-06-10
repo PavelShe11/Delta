@@ -1,3 +1,6 @@
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -35,6 +38,17 @@ android {
         versionName = (project.findProperty("versionName") as? String) ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "APP_DESCRIPTION",    "\"${System.getenv("APP_DESCRIPTION")     ?: "Калькулятор испытаний на герметичность · падение давления ΔP"}\"")
+        buildConfigField("String", "AUTHOR",             "\"${System.getenv("AUTHOR")              ?: "PavelShe11"}\"")
+        buildConfigField("String", "GITHUB_REPO_URL",    "\"${System.getenv("GITHUB_REPO_URL")     ?: "https://github.com/PavelShe11/Delta"}\"")
+        buildConfigField("String", "GITHUB_PROFILE_URL", "\"${System.getenv("GITHUB_PROFILE_URL")  ?: "https://github.com/PavelShe11"}\"")
+        buildConfigField("String", "LICENSE",            "\"${System.getenv("LICENSE")             ?: "MIT"}\"")
+        buildConfigField(
+            "String",
+            "BUILD_LABEL",
+            "\"${YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy.MM"))}\""
+        )
     }
 
     splits {
@@ -63,6 +77,7 @@ android {
     buildFeatures {
         compose = true
         resValues = true
+        buildConfig = true
     }
 }
 

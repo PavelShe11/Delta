@@ -16,4 +16,6 @@ object AppColors {
     val OutlineVar          = Color(0xFF1E293B)
     val Outline             = Color(0xFF3A4660)
     val RVar                = Color(0xFFC4BAFF)
+    val PrimaryContainer    = Color(0xFF004038)
+    val OnPrimaryContainer  = Color(0xFF7AF3DF)
 }
