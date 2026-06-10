@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
@@ -102,6 +103,9 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import io.github.pavelshel1.delta.R
+import io.github.pavelshel1.delta.about.AboutSheetContent
+import io.github.pavelshel1.delta.about.AppInfo
 import io.github.pavelshel1.delta.formula.DeltaPAbstractFormula
 import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
 import io.github.pavelshel1.delta.ui.theme.AppColors
@@ -122,6 +126,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     val pUnitLabel = FieldKey.PStart.units[state.pUnitIdx]
     val focusManager = LocalFocusManager.current
     var pendingHistoryOpen by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
+    val appName = stringResource(R.string.app_name)
+    val appInfo = remember(appName) { AppInfo.fromBuildConfig(appName) }
 
     val filledCount = state.filledCount
 
@@ -427,6 +434,28 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                             Spacer(Modifier.height(10.dp))
                             FormulaCard(state = state, modifier = Modifier.animateItem())
                         }
+
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) { showAbout = true }
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "by PavelShe11",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.5.sp,
+                                    color = AppColors.OnSurface.copy(alpha = 0.12f),
+                                )
+                            }
+                        }
                     }
 
                     val appearProgress by animateFloatAsState(
@@ -459,6 +488,12 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
 
             val slot by component.unitSheet.subscribeAsState()
             slot.child?.instance?.let { UnitSheetContent(it) }
+            if (showAbout) {
+                AboutSheetContent(
+                    appInfo = appInfo,
+                    onDismiss = { showAbout = false },
+                )
+            }
         }
     }
 }
