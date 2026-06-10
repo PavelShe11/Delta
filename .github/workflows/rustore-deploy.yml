@@ -83,6 +83,8 @@ jobs:
           GITHUB_PROFILE_URL: ${{ github.server_url }}/${{ github.repository_owner }}
           AUTHOR:             ${{ github.repository_owner }}
           LICENSE:            ${{ steps.repo_meta.outputs.license }}
+          TRACER_PLUGIN_TOKEN: ${{ secrets.TRACER_PLUGIN_TOKEN }}
+          TRACER_APP_TOKEN: ${{ secrets.TRACER_APP_TOKEN }}
         run: |
           ./gradlew bundleRelease \
             -PversionCode=${{ steps.version_code.outputs.code }} \
