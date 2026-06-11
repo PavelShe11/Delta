@@ -13,6 +13,9 @@ import com.arkivanov.mvikotlin.core.instancekeeper.getStore
 import com.arkivanov.mvikotlin.core.rx.observer
 import com.arkivanov.mvikotlin.core.store.StoreFactory
 import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
+import io.github.pavelshel1.delta.about.AboutSheetComponent
+import io.github.pavelshel1.delta.about.AppInfo
+import io.github.pavelshel1.delta.about.DefaultAboutSheetComponent
 import io.github.pavelshel1.delta.history.HistoryEntry
 import io.github.pavelshel1.delta.unitsheet.DefaultUnitSheetComponent
 import io.github.pavelshel1.delta.unitsheet.FieldKey
@@ -23,6 +26,7 @@ class DefaultCalcComponent(
     storeFactory: StoreFactory = DefaultStoreFactory(),
     private val onHistory: () -> Unit,
     private val onSaveEntry: (CalcEntry) -> Unit = {},
+    private val appInfoProvider: () -> AppInfo,
 ) : CalcComponent, ComponentContext by componentContext {
 
     private val store: CalcStore = instanceKeeper.getStore {
@@ -69,8 +73,25 @@ class DefaultCalcComponent(
         },
     )
 
+    private val aboutNavigation = SlotNavigation<Unit>()
+
+    override val aboutSheet: Value<ChildSlot<*, AboutSheetComponent>> = childSlot(
+        source = aboutNavigation,
+        key = "AboutSheet",
+        serializer = null,
+        handleBackButton = false,
+        childFactory = { _, ctx ->
+            DefaultAboutSheetComponent(
+                componentContext = ctx,
+                appInfo = appInfoProvider(),
+                onDismissAction = { aboutNavigation.dismiss() },
+            )
+        },
+    )
+
     override fun onHistoryRequested() = onHistory()
     override fun onSaveRequested(result: Double) = store.accept(CalcStore.Intent.Save)
+    override fun onAboutRequested() = aboutNavigation.activate(Unit)
     override fun onUnitChipTapped(fieldKey: FieldKey) = sheetNavigation.activate(fieldKey)
     override fun onTStartChanged(text: String) {
         store.accept(CalcStore.Intent.ChangeTStart(text))

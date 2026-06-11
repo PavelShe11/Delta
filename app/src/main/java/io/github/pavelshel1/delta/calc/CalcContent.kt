@@ -82,7 +82,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
@@ -103,9 +102,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import io.github.pavelshel1.delta.R
 import io.github.pavelshel1.delta.about.AboutSheetContent
-import io.github.pavelshel1.delta.about.AppInfo
 import io.github.pavelshel1.delta.formula.DeltaPAbstractFormula
 import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
 import io.github.pavelshel1.delta.ui.theme.AppColors
@@ -126,9 +123,6 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     val pUnitLabel = FieldKey.PStart.units[state.pUnitIdx]
     val focusManager = LocalFocusManager.current
     var pendingHistoryOpen by remember { mutableStateOf(false) }
-    var showAbout by remember { mutableStateOf(false) }
-    val appName = stringResource(R.string.app_name)
-    val appInfo = remember(appName) { AppInfo.fromBuildConfig(appName) }
 
     val filledCount = state.filledCount
 
@@ -443,7 +437,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
-                                    ) { showAbout = true }
+                                    ) { component.onAboutRequested() }
                                     .padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -463,37 +457,36 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                         animationSpec = tween(durationMillis = 300),
                         label = "floatingAppear",
                     )
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = 14.dp, vertical = floatingBottomPadding)
-                            .onSizeChanged { floatingHeightPx = it.height }
-                            .graphicsLayer {
-                                alpha = if (showFloating) appearProgress else 0f
-                                translationY = (1f - appearProgress) * size.height
-                            },
-                    ) {
-                        ResultBlock(
-                            result = lastResult.value?.toDouble() ?: 0.0,
-                            hazeState = hazeState,
-                            justSaved = justSaved,
-                            onSave = {
-                                component.onSaveRequested(lastResult.value?.toDouble() ?: 0.0)
-                                justSaved = true
-                            },
-                        )
+
+                    if (showFloating) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(horizontal = 14.dp, vertical = floatingBottomPadding)
+                                .onSizeChanged { floatingHeightPx = it.height }
+                                .graphicsLayer {
+                                    alpha = if (showFloating) appearProgress else 0f
+                                    translationY = (1f - appearProgress) * size.height
+                                },
+                        ) {
+                            ResultBlock(
+                                result = lastResult.value?.toDouble() ?: 0.0,
+                                hazeState = hazeState,
+                                justSaved = justSaved,
+                                onSave = {
+                                    component.onSaveRequested(lastResult.value?.toDouble() ?: 0.0)
+                                    justSaved = true
+                                },
+                            )
+                        }
                     }
                 }
             }
 
             val slot by component.unitSheet.subscribeAsState()
             slot.child?.instance?.let { UnitSheetContent(it) }
-            if (showAbout) {
-                AboutSheetContent(
-                    appInfo = appInfo,
-                    onDismiss = { showAbout = false },
-                )
-            }
+            val aboutSlot by component.aboutSheet.subscribeAsState()
+            aboutSlot.child?.instance?.let { AboutSheetContent(it) }
         }
     }
 }

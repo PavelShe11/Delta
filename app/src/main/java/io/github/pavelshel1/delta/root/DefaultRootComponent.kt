@@ -13,6 +13,7 @@ import com.arkivanov.decompose.router.slot.dismiss
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
+import io.github.pavelshel1.delta.about.AppInfo
 import io.github.pavelshel1.delta.calc.CalcComponent
 import io.github.pavelshel1.delta.calc.DefaultCalcComponent
 import io.github.pavelshel1.delta.db.DeltaDatabase
@@ -38,10 +39,13 @@ class DefaultRootComponent(
 
     private val slotNavigation = SlotNavigation<SlotConfig>()
 
+    private val appInfo = AppInfo.fromBuildConfig(context.getString(io.github.pavelshel1.delta.R.string.app_name))
+
     override val calc: CalcComponent =
         DefaultCalcComponent(
             componentContext = childContext(key = "calc"),
             onHistory = ::openHistory,
+            appInfoProvider = { appInfo },
             onSaveEntry = { entry ->
                 scope.launch(Dispatchers.IO) {
                     repository.insert(

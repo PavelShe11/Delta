@@ -74,19 +74,20 @@ private val GitHubIcon: ImageVector = ImageVector.Builder(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AboutSheetContent(appInfo: AppInfo, onDismiss: () -> Unit) {
+fun AboutSheetContent(component: AboutSheetComponent) {
+    val appInfo = component.appInfo
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val animatedDismiss = {
         scope.launch {
             sheetState.hide()
         }.invokeOnCompletion {
-            if (!sheetState.isVisible) onDismiss()
+            if (!sheetState.isVisible) component.onDismiss()
         }
         Unit
     }
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = component::onDismiss,
         sheetState = sheetState,
         containerColor = AppColors.Surface,
         contentColor = AppColors.OnSurface,
