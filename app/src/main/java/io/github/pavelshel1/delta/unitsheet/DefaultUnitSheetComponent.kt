@@ -7,10 +7,6 @@ class DefaultUnitSheetComponent(
     override val fieldKey: FieldKey,
     override val units: List<String>,
     override val currentUnit: String,
-    private val onSelectAction: (String) -> Unit,
-    private val onDismissAction: () -> Unit,
-) : UnitSheetComponent, ComponentContext by componentContext {
-
-    override fun onSelect(unit: String) = onSelectAction(unit)
-    override fun onDismiss() = onDismissAction()
-}
+    override val onUnitSelected: (String) -> Unit,
+    override val onDismissRequested: () -> Unit,
+) : UnitSheetComponent, ComponentContext by componentContext

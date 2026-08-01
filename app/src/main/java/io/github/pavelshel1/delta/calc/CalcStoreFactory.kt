@@ -7,23 +7,33 @@ import com.arkivanov.mvikotlin.core.store.Reducer
 import com.arkivanov.mvikotlin.core.store.Store
 import com.arkivanov.mvikotlin.core.store.StoreFactory
 import com.arkivanov.mvikotlin.extensions.coroutines.CoroutineExecutor
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import io.github.pavelshel1.delta.history.HistoryEntry
+import io.github.pavelshel1.delta.history.HistoryRepository
 import io.github.pavelshel1.delta.unitsheet.FieldKey
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
+@SingleIn(AppScope::class)
+@Inject
 class CalcStoreFactory(
     private val storeFactory: StoreFactory,
+    private val repository: HistoryRepository,
 ) {
 
     fun create(stateKeeper: StateKeeper): CalcStore =
-        object : CalcStore, Store<CalcStore.Intent, CalcState, CalcStore.Label>
+        object : CalcStore, Store<CalcStore.Intent, CalcState, Nothing>
         by storeFactory.create(
             name            = STORE_NAME,
             initialState    = stateKeeper.consume(STATE_NAME, CalcStateSnapshot.serializer())
                                   ?.toCalcState() ?: CalcState(),
-            executorFactory = ::ExecutorImpl,
+            executorFactory = { ExecutorImpl(repository) },
             reducer         = ReducerImpl,
         ) {}.also {
             stateKeeper.register(STATE_NAME, CalcStateSnapshot.serializer()) {
@@ -46,11 +56,14 @@ class CalcStoreFactory(
         data class TimeChanged(val text: String)      : Msg
         data class UnitSelected(val fieldKey: FieldKey, val unitIdx: Int) : Msg
         data class EntryLoaded(val entry: CalcEntry) : Msg
+        data class SavedToHistory(val id: Long) : Msg
+        data object SaveUndone : Msg
         data object RecalcResult : Msg
     }
 
-    private class ExecutorImpl :
-        CoroutineExecutor<CalcStore.Intent, Nothing, CalcState, Msg, CalcStore.Label>() {
+    private class ExecutorImpl(
+        private val repository: HistoryRepository,
+    ) : CoroutineExecutor<CalcStore.Intent, Nothing, CalcState, Msg, Nothing>() {
 
         private var recalcJob: Job? = null
 
@@ -95,24 +108,32 @@ class CalcStoreFactory(
                 is CalcStore.Intent.Save -> scope.launch {
                     val s = state()
                     val result = s.computeResult() ?: return@launch
-                    publish(
-                        CalcStore.Label.SavedToHistory(
-                            CalcEntry(
-                                tStartCelsius = s.tStartCelsius?.toPlainString() ?: "",
-                                tStartKelvin  = s.tStartKelvin?.toPlainString()  ?: "",
-                                tEndCelsius   = s.tEndCelsius?.toPlainString()   ?: "",
-                                tEndKelvin    = s.tEndKelvin?.toPlainString()    ?: "",
-                                tUnitIdx      = s.tUnitIdx,
-                                pUnitIdx      = s.pUnitIdx,
-                                pStart        = s.pStart?.toPlainString()        ?: "",
-                                pEnd          = s.pEnd?.toPlainString()          ?: "",
-                                pStartBar     = s.pStartBar?.toPlainString()     ?: "1",
-                                pEndBar       = s.pEndBar?.toPlainString()       ?: "1",
-                                time          = s.time?.toPlainString()          ?: "",
-                                result        = result.toDouble(),
-                            )
-                        )
+                    val historyEntry = HistoryEntry(
+                        id          = 0L,
+                        t           = s.time?.toPlainString()      ?: "",
+                        pStart      = s.pStart?.toPlainString()    ?: "",
+                        pEnd        = s.pEnd?.toPlainString()      ?: "",
+                        pStartBar   = s.pStartBar?.toPlainString() ?: "1",
+                        pEndBar     = s.pEndBar?.toPlainString()   ?: "1",
+                        tStartK     = s.tStartKelvin?.toPlainString() ?: "",
+                        tEndK       = s.tEndKelvin?.toPlainString()   ?: "",
+                        result      = result.toDouble(),
+                        timestampMs = System.currentTimeMillis(),
+                        tUnit       = FieldKey.TStart.units[s.tUnitIdx],
+                        pUnit       = FieldKey.PStart.units[s.pUnitIdx],
+                        name        = intent.name,
+                        comment     = intent.comment,
                     )
+                    val id = withContext(Dispatchers.IO) { repository.insert(historyEntry) }
+                    dispatch(Msg.SavedToHistory(id))
+                }
+
+                is CalcStore.Intent.UndoSave -> {
+                    val id = state().lastSavedId
+                    if (id != null) {
+                        dispatch(Msg.SaveUndone)
+                        scope.launch(Dispatchers.IO) { repository.deleteById(id) }
+                    }
                 }
 
                 is CalcStore.Intent.LoadEntry ->
@@ -132,6 +153,9 @@ class CalcStoreFactory(
             is Msg.TimeChanged   -> copy(time   = msg.text.toBigDecimalOrNull())
 
             is Msg.RecalcResult  -> withResult()
+
+            is Msg.SavedToHistory -> copy(lastSavedId = msg.id)
+            is Msg.SaveUndone     -> copy(lastSavedId = null)
 
             is Msg.UnitSelected -> when (msg.fieldKey) {
                 FieldKey.TStart, FieldKey.TEnd -> copy(tUnitIdx = msg.unitIdx)

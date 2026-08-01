@@ -4,6 +4,6 @@ interface UnitSheetComponent {
     val fieldKey: FieldKey
     val units: List<String>
     val currentUnit: String
-    fun onSelect(unit: String)
-    fun onDismiss()
+    val onUnitSelected: (String) -> Unit
+    val onDismissRequested: () -> Unit
 }

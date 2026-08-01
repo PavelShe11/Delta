@@ -1,12 +1,16 @@
 package io.github.pavelshel1.delta.history
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.Dp
@@ -14,20 +18,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.os.ConfigurationCompat
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.pavelshel1.delta.formula.DeltaPAbstractFormula
@@ -60,7 +71,6 @@ fun HistoryCard(
             .background(AppColors.SurfaceHighest)
             .clickable(onClick = onClick),
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -116,10 +126,26 @@ fun HistoryCard(
 
         HorizontalDivider(color = AppColors.OutlineVar)
 
+        if (entry.name != null) {
+            Text(
+                text = entry.name,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.OnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .padding(top = 8.dp),
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 16.dp),
+                .padding(horizontal = 14.dp)
+                .padding(bottom = 16.dp, top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             DeltaPAbstractFormula(fontSize = 14.sp, fixedHeight = abstractHeightDp)
@@ -141,6 +167,60 @@ fun HistoryCard(
                 fontSize = 14.sp,
                 fixedHeight = resultHeightDp,
             )
+
+            HistoryComment(text = entry.comment)
+        }
+    }
+}
+
+@Composable
+private fun HistoryComment(text: String?) {
+    if (text.isNullOrBlank()) return
+
+    var expanded by remember { mutableStateOf(false) }
+    var isTruncated by remember { mutableStateOf(false) }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "commentChevron",
+    )
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        HorizontalDivider(
+            color = AppColors.OutlineVar,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (isTruncated) Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { expanded = !expanded } else Modifier
+                )
+                .animateContentSize(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = text,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+                color = AppColors.OnSurfaceVar,
+                maxLines = if (expanded) Int.MAX_VALUE else 1,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { layout -> if (!expanded) isTruncated = layout.hasVisualOverflow },
+                modifier = Modifier.weight(1f),
+            )
+            if (isTruncated) {
+                Icon(
+                    imageVector = Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = AppColors.OnSurfaceVar,
+                    modifier = Modifier
+                        .size(15.dp)
+                        .rotate(chevronRotation),
+                )
+            }
         }
     }
 }

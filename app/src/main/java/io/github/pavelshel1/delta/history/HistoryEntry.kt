@@ -17,4 +17,6 @@ data class HistoryEntry(
     val timestampMs: Long,
     val tUnit: String = "°C",
     val pUnit: String = "МПа",
+    val name: String? = null,
+    val comment: String? = null,
 ) : Parcelable

@@ -21,6 +21,7 @@ data class CalcState(
     val time: BigDecimal?      = BigDecimal.valueOf(4),
 
     val result: BigDecimal? = null,
+    val lastSavedId: Long? = null,
 ) {
     val tStartText: BigDecimal? get() = if (tUnitIdx == 0) tStartCelsius else tStartKelvin
     val tEndText: BigDecimal?   get() = if (tUnitIdx == 0) tEndCelsius else tEndKelvin

@@ -11,26 +11,33 @@ import com.arkivanov.decompose.value.Value
 import com.arkivanov.essenty.lifecycle.doOnDestroy
 import com.arkivanov.mvikotlin.core.instancekeeper.getStore
 import com.arkivanov.mvikotlin.core.rx.observer
-import com.arkivanov.mvikotlin.core.store.StoreFactory
-import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import io.github.pavelshel1.delta.about.AboutSheetComponent
-import io.github.pavelshel1.delta.about.AppInfo
 import io.github.pavelshel1.delta.about.DefaultAboutSheetComponent
 import io.github.pavelshel1.delta.history.HistoryEntry
+import io.github.pavelshel1.delta.savedialog.DefaultSaveDialogComponent
+import io.github.pavelshel1.delta.savedialog.SaveDialogComponent
 import io.github.pavelshel1.delta.unitsheet.DefaultUnitSheetComponent
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetComponent
 
+@AssistedInject
 class DefaultCalcComponent(
-    componentContext: ComponentContext,
-    storeFactory: StoreFactory = DefaultStoreFactory(),
-    private val onHistory: () -> Unit,
-    private val onSaveEntry: (CalcEntry) -> Unit = {},
-    private val appInfoProvider: () -> AppInfo,
+    @Assisted componentContext: ComponentContext,
+    @Assisted override val onHistoryRequested: () -> Unit,
+    calcStoreFactory: CalcStoreFactory,
+    private val aboutSheetComponentFactory: DefaultAboutSheetComponent.Factory,
 ) : CalcComponent, ComponentContext by componentContext {
 
+    @AssistedFactory
+    fun interface Factory {
+        fun create(componentContext: ComponentContext, onHistoryRequested: () -> Unit): DefaultCalcComponent
+    }
+
     private val store: CalcStore = instanceKeeper.getStore {
-        CalcStoreFactory(storeFactory).create(stateKeeper)
+        calcStoreFactory.create(stateKeeper)
     }
 
     private val _state = MutableValue(store.state)
@@ -39,11 +46,6 @@ class DefaultCalcComponent(
     init {
         store.states(observer(onNext = { _state.value = it }))
             .also { disposable -> lifecycle.doOnDestroy(disposable::dispose) }
-        store.labels(observer(onNext = { label ->
-            when (label) {
-                is CalcStore.Label.SavedToHistory -> onSaveEntry(label.entry)
-            }
-        })).also { disposable -> lifecycle.doOnDestroy(disposable::dispose) }
     }
 
     private val sheetNavigation = SlotNavigation<FieldKey>()
@@ -59,16 +61,16 @@ class DefaultCalcComponent(
                 else                                                                      -> 0
             }
             DefaultUnitSheetComponent(
-                componentContext = ctx,
-                fieldKey         = fieldKey,
-                units            = fieldKey.units,
-                currentUnit      = fieldKey.units[unitIdx],
-                onSelectAction   = { unit ->
+                componentContext   = ctx,
+                fieldKey           = fieldKey,
+                units              = fieldKey.units,
+                currentUnit        = fieldKey.units[unitIdx],
+                onUnitSelected     = { unit ->
                     val idx = fieldKey.units.indexOf(unit)
                     store.accept(CalcStore.Intent.SelectUnit(fieldKey, idx))
                     sheetNavigation.dismiss()
                 },
-                onDismissAction  = { sheetNavigation.dismiss() },
+                onDismissRequested = { sheetNavigation.dismiss() },
             )
         },
     )
@@ -81,16 +83,34 @@ class DefaultCalcComponent(
         serializer = null,
         handleBackButton = false,
         childFactory = { _, ctx ->
-            DefaultAboutSheetComponent(
+            aboutSheetComponentFactory.create(
                 componentContext = ctx,
-                appInfo = appInfoProvider(),
-                onDismissAction = { aboutNavigation.dismiss() },
+                onDismissRequested = { aboutNavigation.dismiss() },
             )
         },
     )
 
-    override fun onHistoryRequested() = onHistory()
-    override fun onSaveRequested(result: Double) = store.accept(CalcStore.Intent.Save)
+    private val saveDialogNavigation = SlotNavigation<Unit>()
+
+    override val saveDialog: Value<ChildSlot<*, SaveDialogComponent>> = childSlot(
+        source = saveDialogNavigation,
+        key = "SaveDialog",
+        serializer = null,
+        handleBackButton = false,
+        childFactory = { _, ctx ->
+            DefaultSaveDialogComponent(
+                componentContext = ctx,
+                onSaveRequested = { name, comment ->
+                    store.accept(CalcStore.Intent.Save(name, comment))
+                    saveDialogNavigation.dismiss()
+                },
+                onCancelRequested = { saveDialogNavigation.dismiss() },
+            )
+        },
+    )
+
+    override fun onSaveRequested(result: Double) = saveDialogNavigation.activate(Unit)
+    override fun onUndoSave() = store.accept(CalcStore.Intent.UndoSave)
     override fun onAboutRequested() = aboutNavigation.activate(Unit)
     override fun onUnitChipTapped(fieldKey: FieldKey) = sheetNavigation.activate(fieldKey)
     override fun onTStartChanged(text: String) {
@@ -143,4 +163,5 @@ class DefaultCalcComponent(
             )
         )
     }
+
 }

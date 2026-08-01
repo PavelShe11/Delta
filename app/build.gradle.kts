@@ -1,4 +1,4 @@
-import java.time.YearMonth
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 plugins {
@@ -8,6 +8,7 @@ plugins {
     id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
     alias(libs.plugins.tracer)
+    alias(libs.plugins.metro)
 }
 
 android {
@@ -43,11 +44,11 @@ android {
         buildConfigField("String", "AUTHOR",             "\"${System.getenv("AUTHOR")              ?: "PavelShe11"}\"")
         buildConfigField("String", "GITHUB_REPO_URL",    "\"${System.getenv("GITHUB_REPO_URL")     ?: "https://github.com/PavelShe11/Delta"}\"")
         buildConfigField("String", "GITHUB_PROFILE_URL", "\"${System.getenv("GITHUB_PROFILE_URL")  ?: "https://github.com/PavelShe11"}\"")
-        buildConfigField("String", "LICENSE",            "\"${System.getenv("LICENSE")             ?: "MIT"}\"")
+        buildConfigField("String", "LICENSE",            "\"${System.getenv("LICENSE") ?: "" }\"")
         buildConfigField(
             "String",
             "BUILD_LABEL",
-            "\"${YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy.MM"))}\""
+            "\"${LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))}\""
         )
     }
 
@@ -133,12 +134,12 @@ dependencies {
     implementation(libs.latex.parser)
     implementation(libs.latex.renderer)
     implementation(libs.haze)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.sqldelight.android.driver)
     implementation(libs.sqldelight.coroutines)
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
-    testImplementation("app.cash.sqldelight:sqlite-driver:2.3.2")
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.sqlite.driver)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

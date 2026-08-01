@@ -40,7 +40,7 @@ fun UnitSheetContent(component: UnitSheetComponent) {
     }
 
     ModalBottomSheet(
-        onDismissRequest = component::onDismiss,
+        onDismissRequest = component.onDismissRequested,
         sheetState = sheetState,
         containerColor = AppColors.Surface,
     ) {
@@ -71,7 +71,7 @@ fun UnitSheetContent(component: UnitSheetComponent) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { hideAndThen { component.onSelect(unit) } }
+                    .clickable { hideAndThen { component.onUnitSelected(unit) } }
                     .background(if (selected) AppColors.Primary.copy(alpha = 0.08f) else androidx.compose.ui.graphics.Color.Transparent)
                     .padding(horizontal = 24.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,

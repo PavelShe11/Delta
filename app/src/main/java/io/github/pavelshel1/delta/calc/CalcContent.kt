@@ -9,6 +9,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,6 +40,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.SubdirectoryArrowRight
@@ -49,7 +52,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -105,6 +112,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import io.github.pavelshel1.delta.about.AboutSheetContent
 import io.github.pavelshel1.delta.formula.DeltaPAbstractFormula
 import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
+import io.github.pavelshel1.delta.savedialog.SaveDialogContent
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetContent
@@ -132,6 +140,9 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
 
     var justSaved by remember { mutableStateOf(false) }
     LaunchedEffect(state) { justSaved = false }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     val listState = rememberLazyListState()
     val density = LocalDensity.current
@@ -171,6 +182,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     val floatingBottomPadding = 16.dp
     val floatingBottomPaddingPx = with(density) { floatingBottomPadding.toPx() }
     var floatingHeightPx by remember { mutableIntStateOf(0) }
+    var topBarHeightPx by remember { mutableIntStateOf(0) }
 
     val hasResult = result != null
     val showFloating by remember(hasResult) {
@@ -195,14 +207,16 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                 contentWindowInsets = WindowInsets.systemBars,
                 topBar = {
                     Column(
-                        modifier = Modifier.hazeEffect(
-                            state = hazeState,
-                            style = HazeStyle(
-                                backgroundColor = AppColors.Background,
-                                tint = HazeDefaults.tint(AppColors.Background),
-                                fallbackTint = HazeTint(AppColors.Background),
+                        modifier = Modifier
+                            .onSizeChanged { topBarHeightPx = it.height }
+                            .hazeEffect(
+                                state = hazeState,
+                                style = HazeStyle(
+                                    backgroundColor = AppColors.Background,
+                                    tint = HazeDefaults.tint(AppColors.Background),
+                                    fallbackTint = HazeTint(AppColors.Background),
+                                )
                             )
-                        )
                     ) {
                         TopAppBar(
                             title = {
@@ -417,7 +431,6 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                             component.onSaveRequested(
                                                 lastResult.value?.toDouble() ?: 0.0
                                             )
-                                            justSaved = true
                                         },
                                     )
                                 }
@@ -438,7 +451,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
                                     ) { component.onAboutRequested() }
-                                    .padding(vertical = 16.dp),
+                                    .padding(vertical = 8.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -475,7 +488,6 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 justSaved = justSaved,
                                 onSave = {
                                     component.onSaveRequested(lastResult.value?.toDouble() ?: 0.0)
-                                    justSaved = true
                                 },
                             )
                         }
@@ -483,10 +495,114 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                 }
             }
 
+            SaveSnackbar(
+                hostState = snackbarHostState,
+                topOffsetPx = topBarHeightPx,
+                hazeState = hazeState,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+
             val slot by component.unitSheet.subscribeAsState()
             slot.child?.instance?.let { UnitSheetContent(it) }
             val aboutSlot by component.aboutSheet.subscribeAsState()
             aboutSlot.child?.instance?.let { AboutSheetContent(it) }
+            val saveDialogSlot by component.saveDialog.subscribeAsState()
+            saveDialogSlot.child?.instance?.let {
+                SaveDialogContent(
+                    it,
+                    onSaved = {
+                        justSaved = true
+                        coroutineScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Сохранено в историю",
+                                actionLabel = "Отменить",
+                                duration = SnackbarDuration.Short,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                component.onUndoSave()
+                            }
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveSnackbar(
+    hostState: SnackbarHostState,
+    topOffsetPx: Int,
+    hazeState: HazeState,
+    modifier: Modifier = Modifier,
+) {
+    val currentData = hostState.currentSnackbarData
+    var lastData by remember { mutableStateOf(currentData) }
+    if (currentData != null) lastData = currentData
+
+    LaunchedEffect(currentData) {
+        val durationMillis = when (currentData?.visuals?.duration) {
+            SnackbarDuration.Short -> 4000L
+            SnackbarDuration.Long -> 10000L
+            SnackbarDuration.Indefinite, null -> null
+        }
+        if (durationMillis != null) {
+            delay(durationMillis.milliseconds)
+            currentData?.dismiss()
+        }
+    }
+
+    val topOffsetDp = with(LocalDensity.current) { topOffsetPx.toFloat().toDp() }
+    val snackbarShape = RoundedCornerShape(16.dp)
+
+    AnimatedVisibility(
+        visible = currentData != null,
+        enter = slideInVertically(tween(300)) { -it } + fadeIn(tween(300)),
+        exit = slideOutVertically(tween(300)) { -it } + fadeOut(tween(200)),
+        modifier = modifier.padding(top = topOffsetDp + 8.dp, start = 14.dp, end = 14.dp),
+    ) {
+        lastData?.let { data ->
+            Row(
+                modifier = Modifier
+                    .shadow(
+                        elevation = 3.dp,
+                        shape = snackbarShape,
+                        ambientColor = Color.Black.copy(alpha = 0.35f),
+                        spotColor = Color.Black.copy(alpha = 0.35f),
+                    )
+                    .clip(snackbarShape)
+                    .hazeEffect(
+                        state = hazeState,
+                        style = HazeStyle(
+                            backgroundColor = AppColors.Primary,
+                            tint = HazeTint(AppColors.Primary.copy(alpha = 0.55f)),
+                            fallbackTint = HazeTint(AppColors.Primary.copy(alpha = 0.85f)),
+                        ),
+                    )
+                    .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = AppColors.Background,
+                )
+                Text(
+                    text = data.visuals.message,
+                    color = AppColors.Background,
+                    modifier = Modifier.weight(1f),
+                )
+                data.visuals.actionLabel?.let { label ->
+                    TextButton(onClick = { data.performAction() }) {
+                        Text(
+                            text = label,
+                            color = AppColors.Background,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -610,8 +726,8 @@ private fun InputCard(
         textStyle = TextStyle(
             fontSize = 42.sp,
             lineHeight = 42.sp,
-            fontWeight = if (value.isNotEmpty()) FontWeight.Normal else FontWeight.Light,
-            color = if (value.isNotEmpty()) AppColors.OnSurface else AppColors.Outline,
+            fontWeight = if (tfValue.text.isNotEmpty()) FontWeight.Normal else FontWeight.Light,
+            color = if (tfValue.text.isNotEmpty()) AppColors.OnSurface else AppColors.Outline,
         ),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Decimal,
@@ -654,7 +770,7 @@ private fun InputCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
-                        if (value.isEmpty()) {
+                        if (tfValue.text.isEmpty()) {
                             Text(
                                 text = "—",
                                 fontSize = 42.sp,

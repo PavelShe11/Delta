@@ -17,60 +17,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.pavelshel1.delta.ui.theme.AppColors
-
-private val GitHubIcon: ImageVector = ImageVector.Builder(
-    name = "GitHub",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
-    viewportWidth = 24f,
-    viewportHeight = 24f,
-).apply {
-    path(fill = SolidColor(AppColors.Background), pathFillType = PathFillType.NonZero) {
-        moveTo(12f, 2f)
-        curveTo(6.477f, 2f, 2f, 6.477f, 2f, 12f)
-        curveToRelative(0f, 4.418f, 2.865f, 8.166f, 6.839f, 9.489f)
-        curveToRelative(0.5f, 0.092f, 0.682f, -0.217f, 0.682f, -0.482f)
-        curveToRelative(0f, -0.237f, -0.009f, -0.868f, -0.013f, -1.703f)
-        curveToRelative(-2.782f, 0.605f, -3.369f, -1.342f, -3.369f, -1.342f)
-        curveToRelative(-0.454f, -1.155f, -1.11f, -1.463f, -1.11f, -1.463f)
-        curveToRelative(-0.908f, -0.62f, 0.069f, -0.608f, 0.069f, -0.608f)
-        curveToRelative(1.003f, 0.07f, 1.531f, 1.032f, 1.531f, 1.032f)
-        curveToRelative(0.892f, 1.53f, 2.341f, 1.088f, 2.91f, 0.832f)
-        curveToRelative(0.092f, -0.647f, 0.35f, -1.088f, 0.636f, -1.338f)
-        curveToRelative(-2.22f, -0.253f, -4.555f, -1.113f, -4.555f, -4.951f)
-        curveToRelative(0f, -1.093f, 0.39f, -1.988f, 1.029f, -2.688f)
-        curveToRelative(-0.103f, -0.253f, -0.446f, -1.272f, 0.098f, -2.65f)
-        curveToRelative(0f, 0f, 0.84f, -0.27f, 2.75f, 1.026f)
-        arcTo(9.564f, 9.564f, 0f, false, true, 12f, 6.844f)
-        arcToRelative(9.59f, 9.59f, 0f, false, true, 2.504f, 0.337f)
-        curveToRelative(1.909f, -1.296f, 2.747f, -1.027f, 2.747f, -1.027f)
-        curveToRelative(0.546f, 1.379f, 0.202f, 2.398f, 0.1f, 2.651f)
-        curveToRelative(0.64f, 0.7f, 1.028f, 1.595f, 1.028f, 2.688f)
-        curveToRelative(0f, 3.848f, -2.339f, 4.695f, -4.566f, 4.943f)
-        curveToRelative(0.359f, 0.309f, 0.678f, 0.92f, 0.678f, 1.855f)
-        curveToRelative(0f, 1.338f, -0.012f, 2.419f, -0.012f, 2.745f)
-        curveToRelative(0f, 0.268f, 0.18f, 0.58f, 0.688f, 0.482f)
-        arcTo(10.02f, 10.02f, 0f, false, false, 22f, 12f)
-        curveToRelative(0f, -5.523f, -4.477f, -10f, -10f, -10f)
-        close()
-    }
-}.build()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,12 +40,12 @@ fun AboutSheetContent(component: AboutSheetComponent) {
         scope.launch {
             sheetState.hide()
         }.invokeOnCompletion {
-            if (!sheetState.isVisible) component.onDismiss()
+            if (!sheetState.isVisible) component.onDismissRequested()
         }
         Unit
     }
     ModalBottomSheet(
-        onDismissRequest = component::onDismiss,
+        onDismissRequest = component.onDismissRequested,
         sheetState = sheetState,
         containerColor = AppColors.Surface,
         contentColor = AppColors.OnSurface,
@@ -181,7 +139,6 @@ fun AboutSheetContent(component: AboutSheetComponent) {
                 )
                 Spacer(Modifier.height(14.dp))
 
-                // Version chip
                 Row(
                     modifier = Modifier
                         .clip(CircleShape)
@@ -208,7 +165,6 @@ fun AboutSheetContent(component: AboutSheetComponent) {
 
             Spacer(Modifier.height(24.dp))
 
-            // Meta grid
             Row(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
@@ -216,11 +172,11 @@ fun AboutSheetContent(component: AboutSheetComponent) {
                     .background(AppColors.OnSurface.copy(alpha = 0.03f))
                     .border(1.dp, AppColors.OutlineVar, RoundedCornerShape(18.dp)),
             ) {
-                listOf(
-                    "Автор" to appInfo.author,
-                    "Сборка" to appInfo.buildLabel,
-                    "Лицензия" to appInfo.license,
-                ).forEachIndexed { i, (label, value) ->
+                buildList {
+                    add("Автор" to appInfo.author)
+                    add("Сборка от" to appInfo.buildLabel)
+                    if (appInfo.license.isNotBlank()) add("Лицензия" to appInfo.license)
+                }.forEachIndexed { i, (label, value) ->
                     if (i != 0) VerticalDivider(modifier = Modifier.height(64.dp), color = AppColors.OutlineVar)
                     Column(
                         modifier = Modifier.weight(1f).padding(vertical = 14.dp),
@@ -245,7 +201,6 @@ fun AboutSheetContent(component: AboutSheetComponent) {
 
             Spacer(Modifier.height(14.dp))
 
-            // GitHub button
             val uriHandler = LocalUriHandler.current
             Button(
                 onClick = { uriHandler.openUri(appInfo.githubRepoUrl) },
@@ -257,7 +212,7 @@ fun AboutSheetContent(component: AboutSheetComponent) {
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.OnSurface),
             ) {
                 Icon(
-                    imageVector = GitHubIcon,
+                    painter = painterResource(io.github.pavelshel1.delta.R.drawable.ic_github),
                     contentDescription = null,
                     tint = AppColors.Background,
                     modifier = Modifier.size(20.dp),
@@ -286,7 +241,6 @@ fun AboutSheetContent(component: AboutSheetComponent) {
             )
             }
 
-            // Close button
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
