@@ -4,8 +4,8 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface HistoryComponent {
     val entries: StateFlow<List<HistoryEntry>>
-    fun onDismiss()
+    val onDismissRequested: () -> Unit
+    val onEntrySelected: (entry: HistoryEntry) -> Unit
     fun onDelete(id: Long)
     fun onClear()
-    fun onEntrySelected(entry: HistoryEntry)
 }

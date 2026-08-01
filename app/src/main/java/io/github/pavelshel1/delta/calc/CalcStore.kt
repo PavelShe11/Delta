@@ -3,7 +3,7 @@ package io.github.pavelshel1.delta.calc
 import com.arkivanov.mvikotlin.core.store.Store
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 
-interface CalcStore : Store<CalcStore.Intent, CalcState, CalcStore.Label> {
+interface CalcStore : Store<CalcStore.Intent, CalcState, Nothing> {
 
     sealed interface Intent {
         data class ChangeTStart(val text: String)    : Intent
@@ -14,12 +14,9 @@ interface CalcStore : Store<CalcStore.Intent, CalcState, CalcStore.Label> {
         data class ChangePEndBar(val text: String)   : Intent
         data class ChangeTime(val text: String)      : Intent
         data class SelectUnit(val fieldKey: FieldKey, val unitIdx: Int) : Intent
-        data object Save : Intent
+        data class Save(val name: String? = null, val comment: String? = null) : Intent
+        data object UndoSave : Intent
         data class LoadEntry(val entry: CalcEntry) : Intent
-    }
-
-    sealed interface Label {
-        data class SavedToHistory(val entry: CalcEntry) : Label
     }
 }
 

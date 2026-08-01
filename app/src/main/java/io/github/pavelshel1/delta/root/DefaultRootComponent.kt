@@ -1,8 +1,6 @@
 package io.github.pavelshel1.delta.root
 
-import android.content.Context
 import android.os.Parcelable
-import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.childContext
 import com.arkivanov.decompose.router.slot.ChildSlot
@@ -13,59 +11,35 @@ import com.arkivanov.decompose.router.slot.dismiss
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
-import io.github.pavelshel1.delta.about.AppInfo
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import io.github.pavelshel1.delta.calc.CalcComponent
 import io.github.pavelshel1.delta.calc.DefaultCalcComponent
-import io.github.pavelshel1.delta.db.DeltaDatabase
 import io.github.pavelshel1.delta.history.DefaultHistoryComponent
 import io.github.pavelshel1.delta.history.HistoryComponent
-import io.github.pavelshel1.delta.history.HistoryEntry
 import io.github.pavelshel1.delta.history.HistoryRepository
-import io.github.pavelshel1.delta.unitsheet.FieldKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
+@AssistedInject
 class DefaultRootComponent(
-    componentContext: ComponentContext,
-    context: Context,
+    @Assisted componentContext: ComponentContext,
+    private val repository: HistoryRepository,
+    private val calcComponentFactory: DefaultCalcComponent.Factory,
+    private val historyComponentFactory: DefaultHistoryComponent.Factory,
 ) : RootComponent, ComponentContext by componentContext {
 
-    private val driver = AndroidSqliteDriver(DeltaDatabase.Schema, context, "delta.db")
-    private val database = DeltaDatabase(driver)
-    private val repository = HistoryRepository(database)
     private val scope = coroutineScope(Dispatchers.Main.immediate)
 
     private val slotNavigation = SlotNavigation<SlotConfig>()
 
-    private val appInfo = AppInfo.fromBuildConfig(context.getString(io.github.pavelshel1.delta.R.string.app_name))
-
     override val calc: CalcComponent =
-        DefaultCalcComponent(
+        calcComponentFactory.create(
             componentContext = childContext(key = "calc"),
-            onHistory = ::openHistory,
-            appInfoProvider = { appInfo },
-            onSaveEntry = { entry ->
-                scope.launch(Dispatchers.IO) {
-                    repository.insert(
-                        HistoryEntry(
-                            id          = 0L,
-                            t           = entry.time,
-                            pStart      = entry.pStart,
-                            pEnd        = entry.pEnd,
-                            pStartBar   = entry.pStartBar,
-                            pEndBar     = entry.pEndBar,
-                            tStartK     = entry.tStartKelvin,
-                            tEndK       = entry.tEndKelvin,
-                            result      = entry.result,
-                            timestampMs = System.currentTimeMillis(),
-                            tUnit       = FieldKey.TStart.units[entry.tUnitIdx],
-                            pUnit       = FieldKey.PStart.units[entry.pUnitIdx],
-                        )
-                    )
-                }
-            },
+            onHistoryRequested = ::openHistory,
         )
 
     override val historySlot: Value<ChildSlot<*, HistoryComponent>> = childSlot(
@@ -73,11 +47,10 @@ class DefaultRootComponent(
         serializer = null,
         handleBackButton = true,
         childFactory = { _, ctx ->
-            DefaultHistoryComponent(
-                componentContext      = ctx,
-                repository            = repository,
-                onDismissAction       = ::closeHistory,
-                onEntrySelectedAction = { entry ->
+            historyComponentFactory.create(
+                componentContext   = ctx,
+                onDismissRequested = ::closeHistory,
+                onEntrySelected    = { entry ->
                     closeHistory()
                     calc.onEntrySelected(entry)
                 },
@@ -100,5 +73,10 @@ class DefaultRootComponent(
     @Parcelize
     private sealed interface SlotConfig : Parcelable {
         data object History : SlotConfig
+    }
+
+    @AssistedFactory
+    fun interface Factory {
+        fun create(componentContext: ComponentContext): DefaultRootComponent
     }
 }

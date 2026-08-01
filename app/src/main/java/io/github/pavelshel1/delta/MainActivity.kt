@@ -14,7 +14,6 @@ import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.animation.PathInterpolatorCompat
 import com.arkivanov.decompose.defaultComponentContext
-import io.github.pavelshel1.delta.root.DefaultRootComponent
 import io.github.pavelshel1.delta.root.RootContent
 import io.github.pavelshel1.delta.ui.theme.DeltaTheme
 
@@ -26,10 +25,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
 
-        val root = DefaultRootComponent(
-            componentContext = defaultComponentContext(),
-            context = applicationContext,
-        )
+        val root = (application as DeltaApp).appGraph.rootComponentFactory
+            .create(componentContext = defaultComponentContext())
 
         setContent {
             DeltaTheme {

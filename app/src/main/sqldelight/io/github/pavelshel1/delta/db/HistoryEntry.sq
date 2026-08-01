@@ -10,15 +10,17 @@ CREATE TABLE HistoryEntry (
     result      REAL    NOT NULL,
     timestampMs INTEGER NOT NULL,
     tUnit       TEXT    NOT NULL DEFAULT '°C',
-    pUnit       TEXT    NOT NULL DEFAULT 'МПа'
+    pUnit       TEXT    NOT NULL DEFAULT 'МПа',
+    name        TEXT,
+    comment     TEXT
 );
 
 selectAll:
 SELECT * FROM HistoryEntry ORDER BY timestampMs DESC;
 
 insert:
-INSERT INTO HistoryEntry (t, pStart, pEnd, pStartBar, pEndBar, tStartK, tEndK, result, timestampMs, tUnit, pUnit)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO HistoryEntry (t, pStart, pEnd, pStartBar, pEndBar, tStartK, tEndK, result, timestampMs, tUnit, pUnit, name, comment)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteById:
 DELETE FROM HistoryEntry WHERE id = ?;
@@ -28,3 +30,6 @@ DELETE FROM HistoryEntry;
 
 count:
 SELECT COUNT(*) FROM HistoryEntry;
+
+lastInsertRowId:
+SELECT last_insert_rowid();

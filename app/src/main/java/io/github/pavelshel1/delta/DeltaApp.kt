@@ -1,6 +1,8 @@
 package io.github.pavelshel1.delta
 
 import android.app.Application
+import dev.zacsweers.metro.createGraphFactory
+import io.github.pavelshel1.delta.di.AppGraph
 import ru.ok.tracer.CoreTracerConfiguration
 import ru.ok.tracer.HasTracerConfiguration
 import ru.ok.tracer.TracerConfiguration
@@ -10,6 +12,9 @@ import ru.ok.tracer.disk.usage.DiskUsageConfiguration
 import ru.ok.tracer.heap.dumps.HeapDumpConfiguration
 
 class DeltaApp: Application(), HasTracerConfiguration {
+
+    val appGraph: AppGraph by lazy { createGraphFactory<AppGraph.Factory>().create(this) }
+
     override val tracerConfiguration: List<TracerConfiguration>
         get() = listOf(
             CoreTracerConfiguration.build {},

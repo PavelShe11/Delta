@@ -277,7 +277,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                         .background(Color.Transparent),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = component::onDismiss) {
+                    IconButton(onClick = component.onDismissRequested) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Закрыть",
@@ -303,6 +303,6 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                 }
                 HorizontalDivider(color = AppColors.OutlineVar)
             }
-        } // Box (toolbar haze wrapper)
+        }
     }
 }

@@ -1,7 +1,10 @@
 package io.github.pavelshel1.delta.calc
 
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.arkivanov.essenty.statekeeper.StateKeeper
 import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
+import io.github.pavelshel1.delta.db.DeltaDatabase
+import io.github.pavelshel1.delta.history.HistoryRepository
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,7 +43,12 @@ class CalcStoreTest {
     @Before fun setUp()    { Dispatchers.setMain(dispatcher) }
     @After  fun tearDown() { Dispatchers.resetMain() }
 
-    private fun store() = CalcStoreFactory(DefaultStoreFactory()).create(NoOpStateKeeper)
+    private fun store(): CalcStore {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        DeltaDatabase.Schema.create(driver)
+        val repository = HistoryRepository(DeltaDatabase(driver))
+        return CalcStoreFactory(DefaultStoreFactory(), repository).create(NoOpStateKeeper)
+    }
 
     // --- Начальное состояние ---
 
