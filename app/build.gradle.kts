@@ -73,6 +73,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures {
@@ -137,6 +138,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.sqldelight.android.driver)
     implementation(libs.sqldelight.coroutines)
+    implementation(libs.fastexcel)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    testImplementation(libs.fastexcel.reader)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.sqlite.driver)

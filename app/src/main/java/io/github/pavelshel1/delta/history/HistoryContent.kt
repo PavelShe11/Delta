@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -42,11 +43,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -66,13 +69,12 @@ import io.github.pavelshel1.delta.formula.deltaAbstractLatex
 import io.github.pavelshel1.delta.formula.deltaSubstitutedWithResultLatex
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// Кэш на время жизни процесса — при повторном открытии истории высоты уже известны
 private val abstractHeightCache = mutableStateOf<Dp?>(null)
 private val resultHeightCache = mutableStateMapOf<Long, Dp>()
 
-// Предзагрузка ahead элементов в сторону скролла — даёт время Latex-у распарситься до появления
 @OptIn(ExperimentalFoundationApi::class)
 private class EagerPrefetchStrategy(private val ahead: Int = 4) :
     LazyListPrefetchStrategy by LazyListPrefetchStrategy() {
@@ -105,6 +107,8 @@ private class EagerPrefetchStrategy(private val ahead: Int = 4) :
 fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
     val entries by component.entries.collectAsState()
     var showClearDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     val preConfig = remember { LatexConfig(fontSize = 14.sp, theme = LatexTheme.dark()) }
     val measurer = rememberLatexMeasurer(preConfig)
@@ -251,7 +255,6 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
             }
         }
 
-        // ── Toolbar (hazeEffect — размывает контент позади) ──────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -292,6 +295,15 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
                         modifier = Modifier.weight(1f),
                     )
                     if (entries.isNotEmpty()) {
+                        IconButton(onClick = {
+                            coroutineScope.launch { shareHistoryAsExcel(context, entries) }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Экспортировать в Excel",
+                                tint = AppColors.OnSurfaceVar,
+                            )
+                        }
                         IconButton(onClick = { showClearDialog = true }) {
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
