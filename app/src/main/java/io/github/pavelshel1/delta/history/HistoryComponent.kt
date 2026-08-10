@@ -1,11 +1,18 @@
 package io.github.pavelshel1.delta.history
 
-import kotlinx.coroutines.flow.StateFlow
+import com.arkivanov.decompose.router.slot.ChildSlot
+import com.arkivanov.decompose.value.Value
 
 interface HistoryComponent {
-    val entries: StateFlow<List<HistoryEntry>>
+    val state: Value<HistoryState>
+    val entryMenu: Value<ChildSlot<*, EntryMenuComponent>>
+    val deleteConfirm: Value<ChildSlot<*, DeleteConfirmComponent>>
     val onDismissRequested: () -> Unit
-    val onEntrySelected: (entry: HistoryEntry) -> Unit
-    fun onDelete(id: Long)
-    fun onClear()
+    fun onEntryTapped(entry: HistoryEntry)
+    fun onEntryLongPressed(entry: HistoryEntry)
+    fun onSelectionCleared()
+    fun onSelectAllToggled()
+    fun onDeleteRequested(id: Long)
+    fun onDeleteSelectedRequested()
+    fun onEntryMenuRequested(entry: HistoryEntry)
 }

@@ -43,9 +43,9 @@ class HistoryRepository(db: DeltaDatabase) {
 
     fun deleteById(id: Long) = queries.deleteById(id)
 
-    fun deleteAll() = queries.deleteAll()
+    fun deleteByIds(ids: List<Long>) = queries.deleteByIds(ids)
 
-    fun count(): Long = queries.count().executeAsOne()
+    fun deleteAll() = queries.deleteAll()
 
     private fun io.github.pavelshel1.delta.db.HistoryEntry.toDomain() = HistoryEntry(
         id          = id,

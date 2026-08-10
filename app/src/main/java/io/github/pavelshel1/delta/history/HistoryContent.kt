@@ -1,5 +1,10 @@
 package io.github.pavelshel1.delta.history
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,17 +32,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AccessTime
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -56,10 +59,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
+import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import com.arkivanov.decompose.router.slot.ChildSlot
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.latex.renderer.model.LatexTheme
 import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
@@ -68,6 +75,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import io.github.pavelshel1.delta.formula.deltaAbstractLatex
 import io.github.pavelshel1.delta.formula.deltaSubstitutedWithResultLatex
 import io.github.pavelshel1.delta.ui.theme.AppColors
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -105,8 +113,12 @@ private class EagerPrefetchStrategy(private val ahead: Int = 4) :
 
 @Composable
 fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
-    val entries by component.entries.collectAsState()
-    var showClearDialog by remember { mutableStateOf(false) }
+    val state by component.state.subscribeAsState()
+    val entries = state.entries
+    val selectedIds = state.selectedIds
+    val isSelectionMode = state.isSelectionMode
+    val entryMenuSlot by component.entryMenu.subscribeAsState()
+    val deleteConfirmSlot by component.deleteConfirm.subscribeAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -152,169 +164,237 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
 
     val hazeState = rememberHazeState()
 
-    if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = {
-                Text(
-                    text = "Очистить историю?",
-                    color = AppColors.OnSurface,
-                )
-            },
-            text = {
-                Text(
-                    text = "Все сохранённые расчёты будут удалены без возможности восстановления.",
-                    color = AppColors.OnSurfaceVar,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    component.onClear()
-                    showClearDialog = false
-                }) {
-                    Text(text = "Очистить", color = AppColors.Primary)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) {
-                    Text(text = "Отмена", color = AppColors.OnSurfaceVar)
-                }
-            },
-            containerColor = AppColors.SurfaceHighest,
-            titleContentColor = AppColors.OnSurface,
-        )
-    }
+    deleteConfirmSlot.child?.instance?.let { DeleteConfirmContent(it) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(AppColors.Background)
     ) {
-        // ── Контент (источник размытия) ──────────────────────────────────────
         if (entries.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = toolbarHeightDp)
-                    .padding(horizontal = 44.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccessTime,
-                    contentDescription = null,
-                    tint = AppColors.OnSurface.copy(alpha = 0.20f),
-                    modifier = Modifier.size(52.dp),
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "История пуста",
-                    fontSize = 15.sp,
-                    color = AppColors.OnSurfaceVar,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Сохраняйте результаты, нажав значок закладки под расчётом",
-                    fontSize = 12.sp,
-                    color = AppColors.OnSurfaceVar.copy(alpha = 0.55f),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 18.sp,
-                )
-            }
+            HistoryEmptyState(toolbarHeightDp)
         } else {
-            @OptIn(ExperimentalFoundationApi::class)
-            val listState = rememberLazyListState(
-                prefetchStrategy = remember { EagerPrefetchStrategy(ahead = 4) }
+            HistoryEntryList(
+                component = component,
+                entries = entries,
+                selectedIds = selectedIds,
+                isSelectionMode = isSelectionMode,
+                entryMenuSlot = entryMenuSlot,
+                abstractHeightDp = abstractHeightDp,
+                toolbarHeightDp = toolbarHeightDp,
+                navBarBottomDp = navBarBottomDp,
+                hazeState = hazeState,
+                context = context,
+                coroutineScope = coroutineScope,
             )
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .hazeSource(state = hazeState),
-                state = listState,
-                contentPadding = PaddingValues(
-                    start = 14.dp,
-                    end = 14.dp,
-                    top = toolbarHeightDp + 10.dp,
-                    bottom = 10.dp + navBarBottomDp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(entries, key = { it.id }) { entry ->
-                    val id = entry.id
-                    val onDelete = remember(id) { { component.onDelete(id) } }
-                    val onSelect = remember(entry) { { component.onEntrySelected(entry) } }
-                    HistoryCard(
-                        entry = entry,
-                        onDelete = onDelete,
-                        onClick = onSelect,
-                        modifier = Modifier.animateItem(),
-                        abstractHeightDp = abstractHeightDp,
-                        resultHeightDp = resultHeightCache[entry.id],
-                    )
-                }
-            }
         }
 
-        Box(
+        HistoryToolbar(
+            entries = entries,
+            selectedIds = selectedIds,
+            isSelectionMode = isSelectionMode,
+            onDismissRequested = component.onDismissRequested,
+            onSelectionCleared = component::onSelectionCleared,
+            onSelectAllToggled = component::onSelectAllToggled,
+            onDeleteSelectedRequested = component::onDeleteSelectedRequested,
+            hazeState = hazeState,
+            context = context,
+            coroutineScope = coroutineScope,
+            onHeightChanged = { toolbarHeightPx = it },
+        )
+    }
+}
+
+@Composable
+private fun HistoryEmptyState(toolbarHeightDp: Dp, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(top = toolbarHeightDp)
+            .padding(horizontal = 44.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.AccessTime,
+            contentDescription = null,
+            tint = AppColors.OnSurface.copy(alpha = 0.20f),
+            modifier = Modifier.size(52.dp),
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = "История пуста",
+            fontSize = 15.sp,
+            color = AppColors.OnSurfaceVar,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Сохраняйте результаты, нажав значок закладки под расчётом",
+            fontSize = 12.sp,
+            color = AppColors.OnSurfaceVar.copy(alpha = 0.55f),
+            textAlign = TextAlign.Center,
+            lineHeight = 18.sp,
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun HistoryEntryList(
+    component: HistoryComponent,
+    entries: List<HistoryEntry>,
+    selectedIds: List<Long>,
+    isSelectionMode: Boolean,
+    entryMenuSlot: ChildSlot<*, EntryMenuComponent>,
+    abstractHeightDp: Dp?,
+    toolbarHeightDp: Dp,
+    navBarBottomDp: Dp,
+    hazeState: HazeState,
+    context: Context,
+    coroutineScope: CoroutineScope,
+) {
+    val listState = rememberLazyListState(
+        prefetchStrategy = remember { EagerPrefetchStrategy(ahead = 4) }
+    )
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .hazeSource(state = hazeState),
+        state = listState,
+        contentPadding = PaddingValues(
+            start = 14.dp,
+            end = 14.dp,
+            top = toolbarHeightDp + 10.dp,
+            bottom = 10.dp + navBarBottomDp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(entries, key = { it.id }) { entry ->
+            val id = entry.id
+            val onDelete = remember(id) { { component.onDeleteRequested(id) } }
+            val onTap = remember(entry) { { component.onEntryTapped(entry) } }
+            val onLongPress = remember(entry) { { component.onEntryLongPressed(entry) } }
+            val onShare = remember(entry) {
+                {
+                    coroutineScope.launch { shareHistoryAsExcel(context, listOf(entry)) }
+                    Unit
+                }
+            }
+            val onMenuRequested = remember(entry) { { component.onEntryMenuRequested(entry) } }
+            val onMenuDismissRequested = remember(entryMenuSlot) {
+                {
+                    entryMenuSlot.child?.instance?.onDismissRequested?.invoke()
+                    Unit
+                }
+            }
+            HistoryCard(
+                entry = entry,
+                onDelete = onDelete,
+                onShare = onShare,
+                onClick = onTap,
+                onLongClick = onLongPress,
+                selectionMode = isSelectionMode,
+                selected = id in selectedIds,
+                menuExpanded = entryMenuSlot.child?.instance?.entry?.id == id,
+                onMenuRequested = onMenuRequested,
+                onMenuDismissRequested = onMenuDismissRequested,
+                modifier = Modifier.animateItem(),
+                abstractHeightDp = abstractHeightDp,
+                resultHeightDp = resultHeightCache[entry.id],
+            )
+        }
+    }
+}
+
+@Composable
+private fun HistoryToolbar(
+    entries: List<HistoryEntry>,
+    selectedIds: List<Long>,
+    isSelectionMode: Boolean,
+    onDismissRequested: () -> Unit,
+    onSelectionCleared: () -> Unit,
+    onSelectAllToggled: () -> Unit,
+    onDeleteSelectedRequested: () -> Unit,
+    hazeState: HazeState,
+    context: Context,
+    coroutineScope: CoroutineScope,
+    onHeightChanged: (Int) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hazeEffect(
+                state = hazeState,
+                style = HazeStyle(
+                    backgroundColor = AppColors.Background,
+                    tint = HazeDefaults.tint(AppColors.Background),
+                    fallbackTint = HazeTint(AppColors.Background),
+                ),
+            )
+            .onSizeChanged { onHeightChanged(it.height) }
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .hazeEffect(
-                    state = hazeState,
-                    style = HazeStyle(
-                        backgroundColor = AppColors.Background,
-                        tint = HazeDefaults.tint(AppColors.Background),
-                        fallbackTint = HazeTint(AppColors.Background),
-                    ),
-                )
-                .onSizeChanged { toolbarHeightPx = it.height }
+                .statusBarsPadding()
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
+                    .height(56.dp)
+                    .background(Color.Transparent),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(Color.Transparent),
-                    verticalAlignment = Alignment.CenterVertically,
+                IconButton(
+                    onClick = if (isSelectionMode) onSelectionCleared else onDismissRequested,
                 ) {
-                    IconButton(onClick = component.onDismissRequested) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Закрыть",
-                            tint = AppColors.Primary,
-                        )
-                    }
-                    Text(
-                        text = "История расчётов",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = AppColors.OnSurface,
-                        modifier = Modifier.weight(1f),
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = if (isSelectionMode) "Отменить выделение" else "Закрыть",
+                        tint = AppColors.Primary,
                     )
-                    if (entries.isNotEmpty()) {
+                }
+                Text(
+                    text = if (isSelectionMode) "Выбрано: ${selectedIds.size}" else "История расчётов",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = AppColors.OnSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                AnimatedVisibility(
+                    visible = isSelectionMode,
+                    enter = fadeIn() + expandHorizontally(),
+                    exit = fadeOut() + shrinkHorizontally(),
+                ) {
+                    Row {
+                        IconButton(onClick = onSelectAllToggled) {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = "Выбрать всё",
+                                tint = AppColors.OnSurfaceVar,
+                            )
+                        }
                         IconButton(onClick = {
-                            coroutineScope.launch { shareHistoryAsExcel(context, entries) }
+                            val selected = entries.filter { it.id in selectedIds }
+                            coroutineScope.launch { shareHistoryAsExcel(context, selected) }
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Экспортировать в Excel",
+                                contentDescription = "Поделиться выбранным",
                                 tint = AppColors.OnSurfaceVar,
                             )
                         }
-                        IconButton(onClick = { showClearDialog = true }) {
+                        IconButton(onClick = onDeleteSelectedRequested) {
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
-                                contentDescription = "Очистить историю",
+                                contentDescription = "Удалить выбранное",
                                 tint = AppColors.OnSurfaceVar,
                             )
                         }
                     }
                 }
-                HorizontalDivider(color = AppColors.OutlineVar)
             }
+            HorizontalDivider(color = AppColors.OutlineVar)
         }
     }
 }

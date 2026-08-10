@@ -25,6 +25,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 deleteById:
 DELETE FROM HistoryEntry WHERE id = ?;
 
+deleteByIds:
+DELETE FROM HistoryEntry WHERE id IN ?;
+
 deleteAll:
 DELETE FROM HistoryEntry;
 
