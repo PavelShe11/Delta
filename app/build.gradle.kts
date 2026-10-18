@@ -81,6 +81,13 @@ android {
         resValues = true
         buildConfig = true
     }
+
+    packaging {
+        resources {
+            // android-mail и android-activation кладут одинаковые файлы лицензий в META-INF
+            excludes += setOf("META-INF/LICENSE.md", "META-INF/NOTICE.md")
+        }
+    }
 }
 
 tracer {
@@ -139,6 +146,8 @@ dependencies {
     implementation(libs.sqldelight.android.driver)
     implementation(libs.sqldelight.coroutines)
     implementation(libs.fastexcel)
+    implementation(libs.android.mail)
+    implementation(libs.android.activation)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.fastexcel.reader)
     testImplementation(libs.junit)

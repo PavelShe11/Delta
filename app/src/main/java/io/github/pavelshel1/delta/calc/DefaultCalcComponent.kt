@@ -17,6 +17,9 @@ import dev.zacsweers.metro.AssistedInject
 import io.github.pavelshel1.delta.about.AboutSheetComponent
 import io.github.pavelshel1.delta.about.DefaultAboutSheetComponent
 import io.github.pavelshel1.delta.history.HistoryEntry
+import io.github.pavelshel1.delta.mail.DefaultSmtpSettingsComponent
+import io.github.pavelshel1.delta.mail.SmtpSettingsComponent
+import io.github.pavelshel1.delta.mail.SmtpSettingsRepository
 import io.github.pavelshel1.delta.savedialog.DefaultSaveDialogComponent
 import io.github.pavelshel1.delta.savedialog.SaveDialogComponent
 import io.github.pavelshel1.delta.unitsheet.DefaultUnitSheetComponent
@@ -29,11 +32,15 @@ class DefaultCalcComponent(
     @Assisted override val onHistoryRequested: () -> Unit,
     calcStoreFactory: CalcStoreFactory,
     private val aboutSheetComponentFactory: DefaultAboutSheetComponent.Factory,
+    private val smtpSettingsRepository: SmtpSettingsRepository,
 ) : CalcComponent, ComponentContext by componentContext {
 
     @AssistedFactory
     fun interface Factory {
-        fun create(componentContext: ComponentContext, onHistoryRequested: () -> Unit): DefaultCalcComponent
+        fun create(
+            componentContext: ComponentContext,
+            onHistoryRequested: () -> Unit
+        ): DefaultCalcComponent
     }
 
     private val store: CalcStore = instanceKeeper.getStore {
@@ -56,21 +63,41 @@ class DefaultCalcComponent(
         handleBackButton = false,
         childFactory = { fieldKey, ctx ->
             val unitIdx = when (fieldKey) {
-                FieldKey.TStart, FieldKey.TEnd                                           -> store.state.tUnitIdx
-                FieldKey.PStart, FieldKey.PEnd, FieldKey.PStartBar, FieldKey.PEndBar     -> store.state.pUnitIdx
-                else                                                                      -> 0
+                FieldKey.TStart, FieldKey.TEnd -> store.state.tUnitIdx
+                FieldKey.PStart, FieldKey.PEnd, FieldKey.PStartBar, FieldKey.PEndBar -> store.state.pUnitIdx
+                else -> 0
             }
             DefaultUnitSheetComponent(
-                componentContext   = ctx,
-                fieldKey           = fieldKey,
-                units              = fieldKey.units,
-                currentUnit        = fieldKey.units[unitIdx],
-                onUnitSelected     = { unit ->
+                componentContext = ctx,
+                fieldKey = fieldKey,
+                units = fieldKey.units,
+                currentUnit = fieldKey.units[unitIdx],
+                onUnitSelected = { unit ->
                     val idx = fieldKey.units.indexOf(unit)
                     store.accept(CalcStore.Intent.SelectUnit(fieldKey, idx))
                     sheetNavigation.dismiss()
                 },
                 onDismissRequested = { sheetNavigation.dismiss() },
+            )
+        },
+    )
+
+    private val smtpSettingsNavigation = SlotNavigation<Unit>()
+
+    override val smtpSettings: Value<ChildSlot<*, SmtpSettingsComponent>> = childSlot(
+        source = smtpSettingsNavigation,
+        key = "SmtpSettings",
+        serializer = null,
+        handleBackButton = false,
+        childFactory = { _, ctx ->
+            DefaultSmtpSettingsComponent(
+                componentContext = ctx,
+                initial = smtpSettingsRepository.settings(),
+                onSaveRequested = { settings ->
+                    smtpSettingsRepository.save(settings)
+                    smtpSettingsNavigation.dismiss()
+                },
+                onCancelRequested = { smtpSettingsNavigation.dismiss() },
             )
         },
     )
@@ -86,6 +113,10 @@ class DefaultCalcComponent(
             aboutSheetComponentFactory.create(
                 componentContext = ctx,
                 onDismissRequested = { aboutNavigation.dismiss() },
+                onSmtpSettingsRequested = {
+                    aboutNavigation.dismiss()
+                    smtpSettingsNavigation.activate(Unit)
+                },
             )
         },
     )
@@ -148,17 +179,17 @@ class DefaultCalcComponent(
             CalcStore.Intent.LoadEntry(
                 CalcEntry(
                     tStartCelsius = kelvinToCelsius(entry.tStartK),
-                    tStartKelvin  = entry.tStartK,
-                    tEndCelsius   = kelvinToCelsius(entry.tEndK),
-                    tEndKelvin    = entry.tEndK,
-                    tUnitIdx      = tUnitIdx,
-                    pUnitIdx      = pUnitIdx,
-                    pStart        = entry.pStart,
-                    pEnd          = entry.pEnd,
-                    pStartBar     = entry.pStartBar,
-                    pEndBar       = entry.pEndBar,
-                    time          = entry.t,
-                    result        = entry.result,
+                    tStartKelvin = entry.tStartK,
+                    tEndCelsius = kelvinToCelsius(entry.tEndK),
+                    tEndKelvin = entry.tEndK,
+                    tUnitIdx = tUnitIdx,
+                    pUnitIdx = pUnitIdx,
+                    pStart = entry.pStart,
+                    pEnd = entry.pEnd,
+                    pStartBar = entry.pStartBar,
+                    pEndBar = entry.pEndBar,
+                    time = entry.t,
+                    result = entry.result,
                 )
             )
         )

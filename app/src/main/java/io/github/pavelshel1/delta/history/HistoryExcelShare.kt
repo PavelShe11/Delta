@@ -11,7 +11,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-private const val EXPORT_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+internal const val EXPORT_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 private val EXPORT_MAX_AGE_MS = TimeUnit.DAYS.toMillis(3)
 
 internal fun cleanupOldExports(dir: File, now: Long = System.currentTimeMillis()) {
@@ -20,17 +20,20 @@ internal fun cleanupOldExports(dir: File, now: Long = System.currentTimeMillis()
     }
 }
 
-suspend fun shareHistoryAsExcel(context: Context, entries: List<HistoryEntry>) {
-    val uri = withContext(Dispatchers.IO) {
+suspend fun exportHistoryToFile(context: Context, entries: List<HistoryEntry>): File =
+    withContext(Dispatchers.IO) {
         val exportsDir = File(context.cacheDir, "exports").apply { mkdirs() }
         cleanupOldExports(exportsDir)
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val file = File(exportsDir, "delta_history_$timestamp.xlsx")
-        file.outputStream().use { out -> HistoryExcelExporter.export(entries, out) }
-
-        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        File(exportsDir, "delta_history_$timestamp.xlsx").also { file ->
+            file.outputStream().use { out -> HistoryExcelExporter.export(entries, out) }
+        }
     }
+
+suspend fun shareHistoryAsExcel(context: Context, entries: List<HistoryEntry>) {
+    val file = exportHistoryToFile(context, entries)
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 
     val sendIntent = Intent(Intent.ACTION_SEND).apply {
         type = EXPORT_MIME_TYPE

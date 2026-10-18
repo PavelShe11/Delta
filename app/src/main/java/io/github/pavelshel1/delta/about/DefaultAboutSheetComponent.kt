@@ -10,10 +10,15 @@ class DefaultAboutSheetComponent(
     @Assisted componentContext: ComponentContext,
     override val appInfo: AppInfo,
     @Assisted override val onDismissRequested: () -> Unit,
+    @Assisted override val onSmtpSettingsRequested: () -> Unit,
 ) : AboutSheetComponent, ComponentContext by componentContext {
 
     @AssistedFactory
     fun interface Factory {
-        fun create(componentContext: ComponentContext, onDismissRequested: () -> Unit): DefaultAboutSheetComponent
+        fun create(
+            componentContext: ComponentContext,
+            onDismissRequested: () -> Unit,
+            onSmtpSettingsRequested: () -> Unit,
+        ): DefaultAboutSheetComponent
     }
 }

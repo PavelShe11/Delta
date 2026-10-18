@@ -112,6 +112,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import io.github.pavelshel1.delta.about.AboutSheetContent
 import io.github.pavelshel1.delta.formula.DeltaPAbstractFormula
 import io.github.pavelshel1.delta.formula.DeltaPFormulaWithValues
+import io.github.pavelshel1.delta.mail.SmtpSettingsContent
 import io.github.pavelshel1.delta.savedialog.SaveDialogContent
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import io.github.pavelshel1.delta.unitsheet.FieldKey
@@ -506,6 +507,8 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
             slot.child?.instance?.let { UnitSheetContent(it) }
             val aboutSlot by component.aboutSheet.subscribeAsState()
             aboutSlot.child?.instance?.let { AboutSheetContent(it) }
+            val smtpSettingsSlot by component.smtpSettings.subscribeAsState()
+            smtpSettingsSlot.child?.instance?.let { SmtpSettingsContent(it) }
             val saveDialogSlot by component.saveDialog.subscribeAsState()
             saveDialogSlot.child?.instance?.let {
                 SaveDialogContent(

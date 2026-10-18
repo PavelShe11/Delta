@@ -1,5 +1,6 @@
 package io.github.pavelshel1.delta.about
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,8 +13,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -29,6 +34,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.pavelshel1.delta.ui.theme.AppColors
+
+private const val ADMIN_TAPS = 7
+private const val ADMIN_TAP_GAP_MS = 1_000L
+
+/** Тапы считаются серией, только если пауза между ними не больше [ADMIN_TAP_GAP_MS]; иначе серия начинается заново. */
+internal fun nextAdminTapCount(count: Int, sinceLastTapMs: Long): Int =
+    if (sinceLastTapMs > ADMIN_TAP_GAP_MS) 1 else count + 1
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,10 +151,22 @@ fun AboutSheetContent(component: AboutSheetComponent) {
                 )
                 Spacer(Modifier.height(14.dp))
 
+                var versionTaps by remember { mutableIntStateOf(0) }
+                var lastVersionTapMs by remember { mutableLongStateOf(0L) }
                 Row(
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(AppColors.PrimaryContainer)
+                        // ponytail: защита только скрытностью; если пользователи начнут менять настройки — добавить PIN
+                        .clickable(interactionSource = null, indication = null) {
+                            val now = SystemClock.uptimeMillis()
+                            versionTaps = nextAdminTapCount(versionTaps, now - lastVersionTapMs)
+                            lastVersionTapMs = now
+                            if (versionTaps >= ADMIN_TAPS) {
+                                versionTaps = 0
+                                component.onSmtpSettingsRequested()
+                            }
+                        }
                         .padding(horizontal = 12.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),

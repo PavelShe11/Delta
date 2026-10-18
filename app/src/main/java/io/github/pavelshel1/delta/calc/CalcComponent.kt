@@ -3,6 +3,7 @@ package io.github.pavelshel1.delta.calc
 import com.arkivanov.decompose.router.slot.ChildSlot
 import com.arkivanov.decompose.value.Value
 import io.github.pavelshel1.delta.about.AboutSheetComponent
+import io.github.pavelshel1.delta.mail.SmtpSettingsComponent
 import io.github.pavelshel1.delta.savedialog.SaveDialogComponent
 import io.github.pavelshel1.delta.unitsheet.FieldKey
 import io.github.pavelshel1.delta.unitsheet.UnitSheetComponent
@@ -12,6 +13,7 @@ interface CalcComponent {
     val unitSheet: Value<ChildSlot<*, UnitSheetComponent>>
     val aboutSheet: Value<ChildSlot<*, AboutSheetComponent>>
     val saveDialog: Value<ChildSlot<*, SaveDialogComponent>>
+    val smtpSettings: Value<ChildSlot<*, SmtpSettingsComponent>>
     val onHistoryRequested: () -> Unit
     fun onAboutRequested()
     fun onSaveRequested(result: Double)

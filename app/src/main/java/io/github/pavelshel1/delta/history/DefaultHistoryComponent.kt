@@ -14,11 +14,16 @@ import com.arkivanov.mvikotlin.core.rx.observer
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import io.github.pavelshel1.delta.mail.DefaultMailDialogComponent
+import io.github.pavelshel1.delta.mail.MailDialogComponent
+import io.github.pavelshel1.delta.mail.SmtpSettingsRepository
 
 @AssistedInject
 class DefaultHistoryComponent(
     @Assisted componentContext: ComponentContext,
     historyStoreFactory: HistoryStoreFactory,
+    smtpSettingsRepository: SmtpSettingsRepository,
+    private val mailDialogComponentFactory: DefaultMailDialogComponent.Factory,
     @Assisted override val onDismissRequested: () -> Unit,
     @Assisted private val onEntrySelected: (HistoryEntry) -> Unit,
 ) : HistoryComponent, ComponentContext by componentContext {
@@ -102,6 +107,31 @@ class DefaultHistoryComponent(
     )
 
     override fun onEntryMenuRequested(entry: HistoryEntry) = entryMenuNavigation.activate(entry)
+
+    override val isMailEnabled: Boolean = smtpSettingsRepository.isConfigured
+
+    private val mailDialogNavigation = SlotNavigation<List<HistoryEntry>>()
+
+    override val mailDialog: Value<ChildSlot<*, MailDialogComponent>> = childSlot(
+        source = mailDialogNavigation,
+        key = "MailDialog",
+        serializer = null,
+        handleBackButton = false,
+        childFactory = { entries, ctx ->
+            mailDialogComponentFactory.create(
+                componentContext = ctx,
+                entries = entries,
+                onDismissRequested = { mailDialogNavigation.dismiss() },
+            )
+        },
+    )
+
+    override fun onMailRequested(entry: HistoryEntry) = mailDialogNavigation.activate(listOf(entry))
+
+    override fun onMailSelectedRequested() {
+        val selectedIds = state.value.selectedIds
+        mailDialogNavigation.activate(state.value.entries.filter { it.id in selectedIds })
+    }
 
     @AssistedFactory
     fun interface Factory {

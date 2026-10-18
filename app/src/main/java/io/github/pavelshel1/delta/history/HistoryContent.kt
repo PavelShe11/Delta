@@ -1,10 +1,12 @@
 package io.github.pavelshel1.delta.history
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AccessTime
@@ -74,6 +77,7 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import io.github.pavelshel1.delta.formula.deltaAbstractLatex
 import io.github.pavelshel1.delta.formula.deltaSubstitutedWithResultLatex
+import io.github.pavelshel1.delta.mail.MailDialogContent
 import io.github.pavelshel1.delta.ui.theme.AppColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -119,6 +123,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
     val isSelectionMode = state.isSelectionMode
     val entryMenuSlot by component.entryMenu.subscribeAsState()
     val deleteConfirmSlot by component.deleteConfirm.subscribeAsState()
+    val mailDialogSlot by component.mailDialog.subscribeAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -165,6 +170,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
     val hazeState = rememberHazeState()
 
     deleteConfirmSlot.child?.instance?.let { DeleteConfirmContent(it) }
+    mailDialogSlot.child?.instance?.let { MailDialogContent(it) }
 
     Box(
         modifier = modifier
@@ -197,6 +203,7 @@ fun HistoryContent(component: HistoryComponent, modifier: Modifier = Modifier) {
             onSelectionCleared = component::onSelectionCleared,
             onSelectAllToggled = component::onSelectAllToggled,
             onDeleteSelectedRequested = component::onDeleteSelectedRequested,
+            onMailSelectedRequested = if (component.isMailEnabled) component::onMailSelectedRequested else null,
             hazeState = hazeState,
             context = context,
             coroutineScope = coroutineScope,
@@ -280,6 +287,7 @@ private fun HistoryEntryList(
                     Unit
                 }
             }
+            val onMail = remember(entry) { { component.onMailRequested(entry) } }
             val onMenuRequested = remember(entry) { { component.onEntryMenuRequested(entry) } }
             val onMenuDismissRequested = remember(entryMenuSlot) {
                 {
@@ -291,6 +299,7 @@ private fun HistoryEntryList(
                 entry = entry,
                 onDelete = onDelete,
                 onShare = onShare,
+                onMail = if (component.isMailEnabled) onMail else null,
                 onClick = onTap,
                 onLongClick = onLongPress,
                 selectionMode = isSelectionMode,
@@ -315,6 +324,7 @@ private fun HistoryToolbar(
     onSelectionCleared: () -> Unit,
     onSelectAllToggled: () -> Unit,
     onDeleteSelectedRequested: () -> Unit,
+    onMailSelectedRequested: (() -> Unit)?,
     hazeState: HazeState,
     context: Context,
     coroutineScope: CoroutineScope,
@@ -354,13 +364,26 @@ private fun HistoryToolbar(
                         tint = AppColors.Primary,
                     )
                 }
-                Text(
-                    text = if (isSelectionMode) "Выбрано: ${selectedIds.size}" else "История расчётов",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = AppColors.OnSurface,
+                // Счётчик — targetState, чтобы уходящий заголовок показывал своё число, а не 0;
+                // contentKey анимирует только смену режима, а не каждое изменение счётчика.
+                // using null: ширину задаёт weight, анимация размера отставала бы от неё и сдвигала текст.
+                AnimatedContent(
+                    targetState = selectedIds.size,
+                    contentKey = { it > 0 },
+                    transitionSpec = { fadeIn() togetherWith fadeOut() using null },
                     modifier = Modifier.weight(1f),
-                )
+                    label = "HistoryToolbarTitle",
+                ) { count ->
+                    // softWrap = false: пока иконки выделения уходят, заголовок обрезается, а не переносится
+                    Text(
+                        text = if (count > 0) "Выбрано: $count" else "История расчётов",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = AppColors.OnSurface,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
                 AnimatedVisibility(
                     visible = isSelectionMode,
                     enter = fadeIn() + expandHorizontally(),
@@ -383,6 +406,15 @@ private fun HistoryToolbar(
                                 contentDescription = "Поделиться выбранным",
                                 tint = AppColors.OnSurfaceVar,
                             )
+                        }
+                        if (onMailSelectedRequested != null) {
+                            IconButton(onClick = onMailSelectedRequested) {
+                                Icon(
+                                    imageVector = Icons.Default.Email,
+                                    contentDescription = "Отправить выбранное по почте",
+                                    tint = AppColors.OnSurfaceVar,
+                                )
+                            }
                         }
                         IconButton(onClick = onDeleteSelectedRequested) {
                             Icon(

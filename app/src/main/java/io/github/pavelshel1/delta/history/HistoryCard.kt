@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -62,6 +63,7 @@ fun HistoryCard(
     entry: HistoryEntry,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    onMail: (() -> Unit)?,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     selectionMode: Boolean,
@@ -94,6 +96,7 @@ fun HistoryCard(
             onMenuDismissRequested = onMenuDismissRequested,
             onDelete = onDelete,
             onShare = onShare,
+            onMail = onMail,
         )
 
         HistoryCardBody(
@@ -114,6 +117,7 @@ private fun HistoryCardHeader(
     onMenuDismissRequested: () -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    onMail: (() -> Unit)?,
 ) {
     Column {
         Row(
@@ -140,6 +144,7 @@ private fun HistoryCardHeader(
                         onDismissRequested = onMenuDismissRequested,
                         onDelete = onDelete,
                         onShare = onShare,
+                        onMail = onMail,
                     )
                 }
             }
@@ -210,6 +215,7 @@ private fun HistoryCardMenu(
     onDismissRequested: () -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    onMail: (() -> Unit)?,
 ) {
     Box {
         IconButton(
@@ -244,6 +250,16 @@ private fun HistoryCardMenu(
                     onShare()
                 },
             )
+            if (onMail != null) {
+                DropdownMenuItem(
+                    text = { Text("Отправить по почте") },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                    onClick = {
+                        onDismissRequested()
+                        onMail()
+                    },
+                )
+            }
         }
     }
 }
