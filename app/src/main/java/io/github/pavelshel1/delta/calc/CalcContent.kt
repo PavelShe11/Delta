@@ -156,6 +156,8 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
     }
 
     var pendingUnitKey by remember { mutableStateOf<FieldKey?>(null) }
+    val slot by component.unitSheet.subscribeAsState()
+    val activeUnitKey = slot.child?.instance?.fieldKey ?: pendingUnitKey
 
     fun onPressureUnitTapped(key: FieldKey) {
         focusManager.clearFocus()
@@ -284,6 +286,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 value = state.tStartText.toDisplayString(),
                                 unitLabel = FieldKey.TStart.units[state.tUnitIdx],
                                 hasUnitDropdown = true,
+                                unitOpen = activeUnitKey == FieldKey.TStart,
                                 onValueChange = component::onTStartChanged,
                                 onUnitTapped = {
                                     focusManager.clearFocus()
@@ -309,6 +312,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 value = state.tEndText.toDisplayString(),
                                 unitLabel = FieldKey.TEnd.units[state.tUnitIdx],
                                 hasUnitDropdown = true,
+                                unitOpen = activeUnitKey == FieldKey.TEnd,
                                 onValueChange = component::onTEndChanged,
                                 onUnitTapped = {
                                     focusManager.clearFocus()
@@ -333,6 +337,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 value = state.pStart.toDisplayString(),
                                 unitLabel = pUnitLabel,
                                 hasUnitDropdown = true,
+                                unitOpen = activeUnitKey == FieldKey.PStart,
                                 onValueChange = component::onPStartChanged,
                                 onUnitTapped = { onPressureUnitTapped(FieldKey.PStart) },
                                 imeAction = ImeAction.Next,
@@ -351,6 +356,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 value = state.pStartBar.toDisplayString(),
                                 unitLabel = pUnitLabel,
                                 hasUnitDropdown = true,
+                                unitOpen = activeUnitKey == FieldKey.PStartBar,
                                 onValueChange = component::onPStartBarChanged,
                                 onUnitTapped = { onPressureUnitTapped(FieldKey.PStartBar) },
                                 imeAction = ImeAction.Next,
@@ -369,6 +375,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 value = state.pEnd.toDisplayString(),
                                 unitLabel = pUnitLabel,
                                 hasUnitDropdown = true,
+                                unitOpen = activeUnitKey == FieldKey.PEnd,
                                 onValueChange = component::onPEndChanged,
                                 onUnitTapped = { onPressureUnitTapped(FieldKey.PEnd) },
                                 imeAction = ImeAction.Next,
@@ -387,6 +394,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 value = state.pEndBar.toDisplayString(),
                                 unitLabel = pUnitLabel,
                                 hasUnitDropdown = true,
+                                unitOpen = activeUnitKey == FieldKey.PEndBar,
                                 onValueChange = component::onPEndBarChanged,
                                 onUnitTapped = { onPressureUnitTapped(FieldKey.PEndBar) },
                                 imeAction = ImeAction.Next,
@@ -406,6 +414,7 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                                 value = state.time.toDisplayString(),
                                 unitLabel = "ч",
                                 hasUnitDropdown = false,
+                                unitOpen = false,
                                 onValueChange = component::onTimeChanged,
                                 onUnitTapped = {},
                                 imeAction = ImeAction.Done,
@@ -502,7 +511,6 @@ fun CalcContent(component: CalcComponent, historyCount: Int = 0, modifier: Modif
                 modifier = Modifier.align(Alignment.TopCenter),
             )
 
-            val slot by component.unitSheet.subscribeAsState()
             slot.child?.instance?.let { UnitSheetContent(it) }
             val aboutSlot by component.aboutSheet.subscribeAsState()
             aboutSlot.child?.instance?.let { AboutSheetContent(it) }
@@ -666,6 +674,7 @@ private fun InputCard(
     value: String,
     unitLabel: String,
     hasUnitDropdown: Boolean,
+    unitOpen: Boolean,
     onValueChange: (String) -> Unit,
     onUnitTapped: () -> Unit,
     modifier: Modifier = Modifier,
@@ -697,7 +706,11 @@ private fun InputCard(
         val pad = 32
         when {
             cursorX < visStart + pad -> scrollState.animateScrollTo((cursorX - pad).coerceAtLeast(0))
-            cursorX > visEnd - pad   -> scrollState.animateScrollTo((cursorX - boxWidthPx + pad).coerceAtLeast(0))
+            cursorX > visEnd - pad -> scrollState.animateScrollTo(
+                (cursorX - boxWidthPx + pad).coerceAtLeast(
+                    0
+                )
+            )
         }
     }
 
@@ -785,6 +798,7 @@ private fun InputCard(
                         label = unitLabel,
                         hasDropdown = hasUnitDropdown,
                         isFocused = isFocused,
+                        isOpen = unitOpen,
                         onClick = onUnitTapped,
                     )
                 }
@@ -857,13 +871,17 @@ private fun VarChip(main: String, sub: String?) {
 }
 
 @Composable
-private fun UnitChip(label: String, hasDropdown: Boolean, isFocused: Boolean, onClick: () -> Unit) {
-    var isFlashing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+private fun UnitChip(
+    label: String,
+    hasDropdown: Boolean,
+    isFocused: Boolean,
+    isOpen: Boolean,
+    onClick: () -> Unit
+) {
 
     val bgColor by animateColorAsState(
         targetValue = when {
-            isFlashing -> AppColors.Primary.copy(alpha = 0.22f)
+            isOpen -> AppColors.Primary.copy(alpha = 0.22f)
             isFocused -> AppColors.Primary.copy(alpha = 0.09f)
             else -> AppColors.SurfaceHighest
         },
@@ -871,22 +889,22 @@ private fun UnitChip(label: String, hasDropdown: Boolean, isFocused: Boolean, on
         label = "unitBg",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (isFlashing || isFocused) AppColors.Primary.copy(alpha = 0.45f) else AppColors.OutlineVar,
+        targetValue = if (isOpen || isFocused) AppColors.Primary.copy(alpha = 0.45f) else AppColors.OutlineVar,
         animationSpec = tween(150),
         label = "unitBorder",
     )
     val contentColor by animateColorAsState(
-        targetValue = if (isFlashing || isFocused) AppColors.Primary else AppColors.OnSurface,
+        targetValue = if (isOpen || isFocused) AppColors.Primary else AppColors.OnSurface,
         animationSpec = tween(150),
         label = "unitText",
     )
     val chevronColor by animateColorAsState(
-        targetValue = if (isFlashing || isFocused) AppColors.Primary else AppColors.OnSurfaceVar,
+        targetValue = if (isOpen || isFocused) AppColors.Primary else AppColors.OnSurfaceVar,
         animationSpec = tween(150),
         label = "chevronColor",
     )
     val chevronRotation by animateFloatAsState(
-        targetValue = if (isFlashing) 180f else 0f,
+        targetValue = if (isOpen) 180f else 0f,
         animationSpec = tween(200),
         label = "chevronRot",
     )
@@ -900,14 +918,8 @@ private fun UnitChip(label: String, hasDropdown: Boolean, isFocused: Boolean, on
                 if (hasDropdown) Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                ) {
-                    scope.launch {
-                        isFlashing = true
-                        delay(300.milliseconds)
-                        isFlashing = false
-                    }
-                    onClick()
-                } else Modifier
+                    onClick = onClick,
+                ) else Modifier
             )
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -963,7 +975,10 @@ private fun ResultBlock(
                             ),
                             fallbackTint = HazeTint(
                                 Brush.linearGradient(
-                                    listOf(AppColors.ResultGradientStart, AppColors.ResultGradientEnd)
+                                    listOf(
+                                        AppColors.ResultGradientStart,
+                                        AppColors.ResultGradientEnd
+                                    )
                                 )
                             ),
                         )
