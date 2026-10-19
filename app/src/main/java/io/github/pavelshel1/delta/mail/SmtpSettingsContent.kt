@@ -29,8 +29,7 @@ fun SmtpSettingsContent(component: SmtpSettingsComponent) {
     var from by remember { mutableStateOf(component.initial.from) }
     var host by remember { mutableStateOf(component.initial.host) }
     var port by remember { mutableStateOf(component.initial.port.toString()) }
-    val parsed = parseSmtpSettings(from, host, port)
-    val fieldColors = dialogFieldColors()
+        val fieldColors = dialogFieldColors()
 
     AlertDialog(
         onDismissRequest = component.onCancelRequested,
@@ -79,15 +78,14 @@ fun SmtpSettingsContent(component: SmtpSettingsComponent) {
         },
         confirmButton = {
             TextButton(
-                enabled = parsed != null,
                 onClick = {
-                    parsed?.let { component.onSaveRequested(it) }
+                    component.onSaveRequested(parseSmtpSettings(from, host, port))
                     Toast.makeText(context, "Настройки SMTP сохранены", Toast.LENGTH_SHORT).show()
                 },
             ) {
                 Text(
                     text = "Сохранить",
-                    color = if (parsed != null) AppColors.Primary else AppColors.OnSurfaceVar,
+                    color = AppColors.Primary,
                 )
             }
         },

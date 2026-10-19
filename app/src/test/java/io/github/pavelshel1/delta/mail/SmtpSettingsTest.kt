@@ -2,7 +2,6 @@ package io.github.pavelshel1.delta.mail
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SmtpSettingsTest {
@@ -37,11 +36,11 @@ class SmtpSettingsTest {
     }
 
     @Test
-    fun `parseSmtpSettings rejects invalid input`() {
-        assertNull(parseSmtpSettings("delta", "10.0.0.5", "25"))
-        assertNull(parseSmtpSettings("delta@corp.local", " ", "25"))
-        assertNull(parseSmtpSettings("delta@corp.local", "10.0.0.5", ""))
-        assertNull(parseSmtpSettings("delta@corp.local", "10.0.0.5", "0"))
-        assertNull(parseSmtpSettings("delta@corp.local", "10.0.0.5", "65536"))
+    fun `parseSmtpSettings accepts cleared fields and marks them incomplete`() {
+        val cleared = parseSmtpSettings("", " ", "")
+        assertEquals(SmtpSettings(from = "", host = "", port = 25), cleared)
+        assertFalse(cleared.isComplete)
+        assertFalse(parseSmtpSettings("delta", "10.0.0.5", "25").isComplete)
+        assertEquals(25, parseSmtpSettings("delta@corp.local", "10.0.0.5", "70000").port)
     }
 }

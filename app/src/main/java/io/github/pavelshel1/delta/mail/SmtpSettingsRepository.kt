@@ -15,7 +15,7 @@ data class SmtpSettings(
     val host: String = "",
     val port: Int = DEFAULT_SMTP_PORT,
 ) {
-    val isComplete: Boolean get() = from.isNotBlank() && host.isNotBlank()
+    val isComplete: Boolean get() = EMAIL_REGEX.matches(from) && host.isNotBlank()
 }
 
 @SingleIn(AppScope::class)
@@ -60,9 +60,9 @@ internal fun pushRecipient(current: List<String>, to: String, max: Int = MAX_REC
     return (listOf(value) + current.filterNot { it.equals(value, ignoreCase = true) }).take(max)
 }
 
-/** `null` — данные невалидны, сохранять нельзя. */
-internal fun parseSmtpSettings(from: String, host: String, port: String): SmtpSettings? {
-    val portNumber = port.trim().toIntOrNull()?.takeIf { it in 1..65535 } ?: return null
-    if (!EMAIL_REGEX.matches(from.trim()) || host.isBlank()) return null
-    return SmtpSettings(from = from.trim(), host = host.trim(), port = portNumber)
-}
+/** Принимает любой ввод: пустые/невалидные поля делают [SmtpSettings.isComplete] ложным и отключают отправку. */
+internal fun parseSmtpSettings(from: String, host: String, port: String): SmtpSettings = SmtpSettings(
+    from = from.trim(),
+    host = host.trim(),
+    port = port.trim().toIntOrNull()?.takeIf { it in 1..65535 } ?: DEFAULT_SMTP_PORT,
+)
